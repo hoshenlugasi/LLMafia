@@ -94,20 +94,22 @@ def add_message_to_game(player, message_history):
     # Social Turing Test: no nighttime restrictions, AI can always chat during discussion phase
     message = player.generate_message(message_history).strip()
     if is_time_to_vote(game_dir):
-        return  # sometimes the messages is generated when it's already too late, so drop it
+        return False  # sometimes the messages is generated when it's already too late, so drop it
     if message:
         # artificially making the model taking time to write the message
         wait_writing_time(player, message)
         if is_time_to_vote(game_dir):
-            return  # waited for too long
+            return False  # waited for too long
         formatted_message = format_message(player.name, message)
         with open(game_dir / PERSONAL_CHAT_FILE_FORMAT.format(player.name), "a") as f:
             f.write(formatted_message)
         # Immediately update message_history to prevent duplicate messages
         message_history.append(formatted_message)
         print(colored(MODEL_CHOSE_TO_USE_TURN_LOG, OPERATOR_COLOR))
+        return True  # message was sent
     else:
         print(colored(MODEL_CHOSE_TO_PASS_TURN_LOG, OPERATOR_COLOR))
+        return False  # no message sent
 
 
 def end_game(eliminated: bool):
@@ -140,9 +142,19 @@ def main():
                 continue  # wait for voting time to end when all human players have voted
         else:
             # Only generate messages during discussion phase, not during/after voting
-            add_message_to_game(player, message_history)
-            # Sleep briefly to allow message history to stabilize and prevent duplicate messages
-            time.sleep(1)
+            message_was_sent = add_message_to_game(player, message_history)
+            if message_was_sent:
+                # Message sent - refresh chat history before allowing another message
+                # This ensures the AI sees both its own message AND any new human messages
+                num_read_lines_manager += read_messages_from_file(
+                    message_history, PUBLIC_MANAGER_CHAT_FILE, num_read_lines_manager)
+                num_read_lines_daytime += read_messages_from_file(
+                    message_history, PUBLIC_DAYTIME_CHAT_FILE, num_read_lines_daytime)
+                # Now loop again with full context - allows consecutive messages while staying in sync
+                continue
+            else:
+                # No message sent - wait briefly before checking again
+                time.sleep(0.5)
     
     # Final check: if game ended but we haven't detected elimination yet, check now
     if not eliminated and is_voted_out(player.name, game_dir):
