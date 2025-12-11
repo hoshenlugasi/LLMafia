@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -138,6 +138,28 @@
             color: #856404;
             border-bottom: 2px solid #ffc107;
             flex-shrink: 0;
+            position: relative;
+        }
+        
+        /* Discussion Timer Box - Now in info-bar */
+        .timer-box {
+            background: #ff4d4d;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+            animation: timerPulse 2s ease-in-out infinite;
+        }
+        
+        @keyframes timerPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .timer-box.hidden {
+            display: none;
         }
         
         #rulesBox {
@@ -155,6 +177,14 @@
             overflow-y: auto;
         }
         
+        /* Chat Area with Side Panel */
+        #chatArea {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+            overflow: hidden;
+        }
+        
         #messagesContainer {
             flex: 1;
             overflow-y: auto;
@@ -162,6 +192,71 @@
             padding-bottom: 120px;
             background: #fafafa;
             min-height: 0;
+        }
+        
+        /* Players Panel */
+        #playersPanel {
+            width: 200px;
+            background: #f8f9fa;
+            border-left: 2px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+        
+        .players-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 15px;
+            font-weight: bold;
+            font-size: 14px;
+            text-align: center;
+            border-bottom: 2px solid #5568d3;
+            flex-shrink: 0;
+        }
+        
+        #playersList {
+            padding: 15px 10px;
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .player-item {
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        
+        .player-item.active {
+            background: #e8f5e9;
+            border: 1px solid #4caf50;
+        }
+        
+        .player-item.eliminated {
+            background: #ffebee;
+            border: 1px solid #f44336;
+            opacity: 0.7;
+        }
+        
+        .player-status-icon {
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        
+        .player-item-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .player-item.eliminated .player-item-name {
+            text-decoration: line-through;
+            color: #666;
         }
         
         .message {
@@ -561,13 +656,23 @@
                     <span>Playing as: </span>
                     <span class="player-name" id="playerName"></span>
                 </div>
+                <div id="discussionTimerBox" class="timer-box hidden">
+                    ⏱️ <span id="timerValue">02:00</span>
+                </div>
                 <div id="roleBadge"></div>
             </div>
             
             <div id="phaseIndicator">⏳ Waiting for players...</div>
+            
             <div id="rulesBox"></div>
             
-            <div id="messagesContainer"></div>
+            <div id="chatArea">
+                <div id="messagesContainer"></div>
+                <div id="playersPanel">
+                    <div class="players-header">👥 Players</div>
+                    <div id="playersList"></div>
+                </div>
+            </div>
             
             <div id="votePanel">
                 <h3>Voting Phase - Select who to eliminate</h3>
@@ -672,6 +777,15 @@
         let gameOverMessageShown = false;
         let surveyShown = false;
         
+        // Discussion timer state
+        let discussionDurationMinutes = 2.0;  // Default, will be fetched from backend
+        let discussionTimerInterval = null;
+        let discussionSecondsRemaining = 0;
+        
+        // Phase transition tracking
+        let previousCanChat = false;
+        let previousCanVote = false;
+        
         // Survey ratings - track all 4 rating fields
         let surveyRatings = {
             confidence: null,
@@ -680,14 +794,42 @@
             relevance: null
         };
         
-        // Generate consistent color for each player based on their name
+        // Unique player colors
+        const playerColors = {};
+        const availableColors = [
+            "#e74c3c",  // Red
+            "#3498db",  // Blue
+            "#2ecc71",  // Green
+            "#f39c12",  // Orange
+            "#9b59b6",  // Purple
+            "#1abc9c",  // Teal
+            "#e67e22",  // Dark Orange
+            "#34495e"   // Dark Gray
+        ];
+        let colorIndex = 0;
+        
+        // Players panel state
+        let allPlayers = [];
+        let playersListInitialized = false;
+        
+        // Get unique color for each player
         function getPlayerColor(name) {
-            let hash = 0;
-            for (let i = 0; i < name.length; i++) {
-                hash = name.charCodeAt(i) + ((hash << 5) - hash);
+            if (!playerColors[name]) {
+                // Assign next available color
+                if (colorIndex < availableColors.length) {
+                    playerColors[name] = availableColors[colorIndex];
+                    colorIndex++;
+                } else {
+                    // Fallback to hash-based if we run out of predefined colors
+                    let hash = 0;
+                    for (let i = 0; i < name.length; i++) {
+                        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+                    }
+                    const hue = Math.abs(hash % 360);
+                    playerColors[name] = `hsl(${hue}, 70%, 45%)`;
+                }
             }
-            const hue = Math.abs(hash % 360);
-            return `hsl(${hue}, 70%, 45%)`; // Saturated, readable colors
+            return playerColors[name];
         }
         
         // Format chat message with colored player name
@@ -785,7 +927,71 @@
         }
         
         function startPolling() {
+            // Fetch game configuration (discussion duration)
+            fetch('/get_game_config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({session_id: sessionId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.daytime_minutes) {
+                    discussionDurationMinutes = data.daytime_minutes;
+                    console.log(`[Timer] Discussion duration: ${discussionDurationMinutes} minutes`);
+                }
+            })
+            .catch(err => {
+                console.error('[Timer] Error fetching config:', err);
+            });
+            
             pollInterval = setInterval(pollMessages, 1000);
+        }
+        
+        function startDiscussionTimer() {
+            // Initialize timer with configured duration
+            discussionSecondsRemaining = Math.floor(discussionDurationMinutes * 60);
+            console.log(`[Timer] Starting discussion timer: ${discussionSecondsRemaining} seconds`);
+            
+            // Show timer box
+            const timerBox = document.getElementById('discussionTimerBox');
+            timerBox.classList.remove('hidden');
+            
+            // Update display immediately
+            updateTimerDisplay();
+            
+            // Update every second
+            discussionTimerInterval = setInterval(() => {
+                discussionSecondsRemaining--;
+                updateTimerDisplay();
+                
+                if (discussionSecondsRemaining <= 0) {
+                    stopDiscussionTimer();
+                }
+            }, 1000);
+        }
+        
+        function stopDiscussionTimer() {
+            if (discussionTimerInterval) {
+                clearInterval(discussionTimerInterval);
+                discussionTimerInterval = null;
+                console.log('[Timer] Stopped discussion timer');
+            }
+            
+            // Hide timer box
+            const timerBox = document.getElementById('discussionTimerBox');
+            timerBox.classList.add('hidden');
+        }
+        
+        function updateTimerDisplay() {
+            const minutes = Math.floor(discussionSecondsRemaining / 60);
+            const seconds = discussionSecondsRemaining % 60;
+            const display = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            
+            // Update only the timer value span, not the whole box
+            const timerValue = document.getElementById('timerValue');
+            if (timerValue) {
+                timerValue.textContent = display;
+            }
         }
         
         function pollMessages() {
@@ -807,11 +1013,38 @@
                 // Store remaining players for elimination check
                 window.lastRemainingPlayers = data.remaining_players;
                 
+                // Update players panel
+                if (data.remaining_players && Array.isArray(data.remaining_players)) {
+                    updatePlayersPanel(data.remaining_players, data.all_players);
+                }
+                
                 // Add new messages
                 if (data.messages && data.messages.length > 0) {
                     console.log(`Received ${data.messages.length} new messages`);
                     data.messages.forEach(msg => addMessage(msg));
                 }
+                
+                // TASK 1: Detect discussion phase start and start timer
+                if (data.can_chat && !previousCanChat) {
+                    console.log('[Timer] Discussion phase started');
+                    startDiscussionTimer();
+                }
+                
+                // TASK 1: Stop timer when discussion ends (voting starts or game over)
+                if (previousCanChat && (!data.can_chat || data.game_over)) {
+                    console.log('[Timer] Discussion phase ended');
+                    stopDiscussionTimer();
+                }
+                
+                // TASK 2: Reset hasVoted flag when a new voting round starts
+                if (data.can_vote && !previousCanVote) {
+                    console.log('[Vote] New voting round started - resetting hasVoted');
+                    hasVoted = false;
+                }
+                
+                // Update previous state for next iteration
+                previousCanChat = data.can_chat;
+                previousCanVote = data.can_vote;
                 
                 // Update phase indicator
                 updatePhaseIndicator(data);
@@ -819,12 +1052,11 @@
                 // Update input state
                 updateInputState(data);
                 
-                // Handle voting panel
+                // TASK 2: Handle voting panel - now checks hasVoted to prevent re-showing
                 if (data.can_vote && data.remaining_players) {
                     showVotePanel(data.remaining_players);
                 } else {
                     hideVotePanel();
-                    hasVoted = false;
                 }
                 
                 // Game over
@@ -945,6 +1177,52 @@
             console.log(`Message #${messageCount} added: ${msg.text.substring(0, 50)}...`);
         }
         
+        // Update players panel with current game state
+        function updatePlayersPanel(remainingPlayers, allPlayersFromServer) {
+            // Initialize all players list once from server
+            if (!playersListInitialized && allPlayersFromServer && Array.isArray(allPlayersFromServer)) {
+                allPlayers = allPlayersFromServer;
+                playersListInitialized = true;
+                console.log('[Players Panel] Initialized with players:', allPlayers);
+            }
+            
+            // If we don't have all players yet, try to infer from remaining players
+            if (allPlayers.length === 0 && remainingPlayers && remainingPlayers.length > 0) {
+                allPlayers = [...remainingPlayers];
+            }
+            
+            // Don't update if we have no player information
+            if (allPlayers.length === 0) {
+                return;
+            }
+            
+            const playersList = document.getElementById('playersList');
+            playersList.innerHTML = '';
+            
+            // Render each player with their status
+            allPlayers.forEach(player => {
+                const isActive = remainingPlayers.includes(player);
+                const playerDiv = document.createElement('div');
+                playerDiv.className = `player-item ${isActive ? 'active' : 'eliminated'}`;
+                
+                // Status icon
+                const icon = document.createElement('span');
+                icon.className = 'player-status-icon';
+                icon.textContent = isActive ? '✅' : '❌';
+                
+                // Player name
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'player-item-name';
+                nameSpan.textContent = player;
+                
+                playerDiv.appendChild(icon);
+                playerDiv.appendChild(nameSpan);
+                playersList.appendChild(playerDiv);
+            });
+            
+            console.log(`[Players Panel] Updated: ${remainingPlayers.length}/${allPlayers.length} active`);
+        }
+        
         function sendMessage() {
             // 🛑 Block sending if player is eliminated
             if (window.lastRemainingPlayers && !window.lastRemainingPlayers.includes(playerName)) {
@@ -997,6 +1275,12 @@
         }
         
         function showVotePanel(players) {
+            // TASK 2: Don't show panel if player has already voted this round
+            if (hasVoted) {
+                console.log('[Vote Panel] Hidden - already voted this round');
+                return;
+            }
+            
             // Issue 1: Block vote panel for eliminated players
             if (window.lastRemainingPlayers && !window.lastRemainingPlayers.includes(playerName)) {
                 console.log('[Vote Panel] Blocked - player is eliminated');

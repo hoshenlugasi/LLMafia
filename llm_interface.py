@@ -100,8 +100,11 @@ def add_message_to_game(player, message_history):
         wait_writing_time(player, message)
         if is_time_to_vote(game_dir):
             return  # waited for too long
+        formatted_message = format_message(player.name, message)
         with open(game_dir / PERSONAL_CHAT_FILE_FORMAT.format(player.name), "a") as f:
-            f.write(format_message(player.name, message))
+            f.write(formatted_message)
+        # Immediately update message_history to prevent duplicate messages
+        message_history.append(formatted_message)
         print(colored(MODEL_CHOSE_TO_USE_TURN_LOG, OPERATOR_COLOR))
     else:
         print(colored(MODEL_CHOSE_TO_PASS_TURN_LOG, OPERATOR_COLOR))
@@ -132,10 +135,20 @@ def main():
             eliminated = True
             break
         if is_time_to_vote(game_dir):
-            get_vote_from_llm(player, message_history)
+            # AI does not vote - simply wait silently until voting phase ends
             while is_time_to_vote(game_dir):
-                continue  # wait for voting time to end when all players have voted
-        add_message_to_game(player, message_history)
+                continue  # wait for voting time to end when all human players have voted
+        else:
+            # Only generate messages during discussion phase, not during/after voting
+            add_message_to_game(player, message_history)
+            # Sleep briefly to allow message history to stabilize and prevent duplicate messages
+            time.sleep(1)
+    
+    # Final check: if game ended but we haven't detected elimination yet, check now
+    if not eliminated and is_voted_out(player.name, game_dir):
+        eliminated = True
+        eliminate(player)
+    
     end_game(eliminated)
 
 

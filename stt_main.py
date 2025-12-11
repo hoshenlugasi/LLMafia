@@ -98,30 +98,14 @@ def get_voted_out_name(optional_votes_players, public_chat_file, voting_players,
     # if there were invalid votes or if there was a tie, decision will be made "randomly"
     voted_out_name = max(votes, key=votes.get)
     
-    # BUG FIX: Construct voting results as ONE combined message (appears as one bubble in UI)
-    result = "Voting results:\n"
-    
-    if not anonymous_voting:
-        # Show who voted for whom
-        result += "\n".join(f"  {voter} → {voted_for}" for voter, voted_for in vote_details)
-        result += "\n\n"
-    
-    # Show summary (sorted by vote count, descending)
-    result += "Summary:\n"
-    sorted_votes = sorted(votes.items(), key=lambda x: x[1], reverse=True)
-    result += "\n".join(
-        f"  {player_name}: {vote_count} {'vote' if vote_count == 1 else 'votes'}"
-        for player_name, vote_count in sorted_votes
-    )
-    
-    # Write as ONE message to manager chat file
-    game_manager_announcement(result)
-    
+    # No voting breakdown - only the final elimination will be announced
     return voted_out_name
 
 def voting_sub_phase(phase_name, voting_players, optional_votes_players, public_chat_file, players, anonymous_voting=False):
     notify_players_about_voting_time(phase_name, public_chat_file)
-    voted_out_name = get_voted_out_name(optional_votes_players, public_chat_file, voting_players[:], anonymous_voting)
+    # Filter out AI players from voting - only humans vote
+    human_voting_players = [p for p in voting_players if not p.is_ai]
+    voted_out_name = get_voted_out_name(optional_votes_players, public_chat_file, human_voting_players[:], anonymous_voting)
     # update info file of remaining players
     remaining_players = (game_dir / REMAINING_PLAYERS_FILE).read_text(encoding="utf-8", errors="ignore").splitlines()
     remaining_players.remove(voted_out_name)

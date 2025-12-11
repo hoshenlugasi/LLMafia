@@ -1,7 +1,28 @@
 {
     "players": [
         {
-            "name": "Winter",
+            "name": "Jackie",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "Gabi",
+            "llm_config": {}
+        },
+        {
+            "name": "Sutton",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "Uri",
+            "llm_config": {}
+        },
+        {
+            "name": "Ashton",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "Niv1",
+            "llm_config": {}
+        },
+        {
+            "name": "Ronny",
             "is_ai": true,
             "is_llm": true,
             "real_name": "LLM0",
@@ -23,27 +44,6 @@
                 "use_turn_token": "<send>",
                 "async_type": "schedule_then_generate"
             }
-        },
-        {
-            "name": "Parker",
-            "is_ai": false,
-            "is_llm": false,
-            "real_name": "Gabi",
-            "llm_config": {}
-        },
-        {
-            "name": "Drew",
-            "is_ai": false,
-            "is_llm": false,
-            "real_name": "Uri",
-            "llm_config": {}
-        },
-        {
-            "name": "Avery",
-            "is_ai": false,
-            "is_llm": false,
-            "real_name": "Niv1",
-            "llm_config": {}
         }
     ],
     "daytime_minutes": 2.0,

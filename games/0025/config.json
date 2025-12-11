@@ -1,21 +1,28 @@
 {
     "players": [
         {
-            "name": "Whitney",
+            "name": "Jackie",
             "is_ai": false,
             "is_llm": false,
             "real_name": "Gabi",
             "llm_config": {}
         },
         {
-            "name": "Avery",
+            "name": "Sutton",
             "is_ai": false,
             "is_llm": false,
             "real_name": "Uri",
             "llm_config": {}
         },
         {
-            "name": "Kennedy",
+            "name": "Ashton",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "Niv1",
+            "llm_config": {}
+        },
+        {
+            "name": "Ronny",
             "is_ai": true,
             "is_llm": true,
             "real_name": "LLM0",
@@ -43,5 +50,6 @@
     "nighttime_minutes": 0,
     "anonymous_voting": true,
     "notes": "",
-    "preparation_command": "prepare_config.py -p 3 -l 1 -n configurations/name_files/rehearsal.txt -dt 2 -a -o Qwen3av"
+    "preparation_command": "prepare_config.py -p 4 -l 1 -n configurations/name_files/rehearsal.txt -dt 2 -a -o qwen4",
+    "config_original_path_when_game_created": ".\\configurations\\qwen4.json"
 }

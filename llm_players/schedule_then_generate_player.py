@@ -25,8 +25,14 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
         # scheduler_kwargs = kwargs.get("scheduler_kwargs", kwargs)
         # self.scheduler = LLMWrapper(**scheduler_kwargs)
         self.scheduler = self.llm  # using the same one for generation...
+        self.message_in_progress = False  # Prevent duplicate messages during generation
 
     def should_generate_message(self, message_history):
+        # Prevent duplicate messages: if already generating a message, return False
+        if self.message_in_progress:
+            self.logger.log("should_generate_message", "BLOCKED: message already in progress")
+            return False
+        
         if no_one_has_talked_yet_in_current_phase(message_history):
             return False
         prompt = self.create_scheduling_prompt(message_history)
@@ -38,12 +44,19 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
 
     def generate_message(self, message_history):
         if self.should_generate_message(message_history):
-            prompt = self.create_generation_prompt(message_history)
-            self.logger.log("prompt in generate_message", prompt)
-            message = self.llm.generate(
-                prompt, False, self.get_system_info_message(attention_to_not_repeat=True))
-            message = make_more_human_like(message)
-            return message
+            # Lock to prevent duplicate message generation
+            self.message_in_progress = True
+            try:
+                prompt = self.create_generation_prompt(message_history)
+                self.logger.log("prompt in generate_message", prompt)
+                message = self.llm.generate(
+                    prompt, False, self.get_system_info_message(attention_to_not_repeat=True))
+                message = make_more_human_like(message)
+                return message
+            finally:
+                # Always unlock, even if an error occurs
+                self.message_in_progress = False
+                self.logger.log("generate_message", "UNLOCKED: message generation complete")
         else:
             return ""
 

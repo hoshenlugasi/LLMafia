@@ -342,6 +342,36 @@ def vote():
 
     return jsonify({"success": True})
 
+@app.route("/get_game_config", methods=["POST"])
+def get_game_config():
+    """
+    Return game configuration, specifically the discussion time duration.
+    Used by frontend to initialize the countdown timer.
+    """
+    data = request.json or {}
+    session_id = data.get("session_id")
+
+    if session_id not in player_states:
+        return jsonify({"error": "Invalid session"}), 401
+
+    player = player_states[session_id]
+    config_file = player.game_dir / "config.json"
+    
+    if config_file.exists():
+        import json
+        with open(config_file) as f:
+            config = json.load(f)
+        
+        from game_constants import DAYTIME_MINUTES_KEY
+        daytime_minutes = config.get(DAYTIME_MINUTES_KEY, 2.0)
+        
+        return jsonify({
+            "daytime_minutes": daytime_minutes
+        })
+    
+    # Default fallback
+    return jsonify({"daytime_minutes": 2.0})
+
 @app.route("/get_survey_options", methods=["POST"])
 def get_survey_options():
     """

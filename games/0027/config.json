@@ -43,5 +43,6 @@
     "nighttime_minutes": 0,
     "anonymous_voting": true,
     "notes": "",
-    "preparation_command": "prepare_config.py -p 3 -l 1 -n configurations/name_files/rehearsal.txt -dt 2 -a -o Qwen3av"
+    "preparation_command": "prepare_config.py -p 3 -l 1 -n configurations/name_files/rehearsal.txt -dt 2 -a -o Qwen3av",
+    "config_original_path_when_game_created": ".\\configurations\\Qwen3av.json"
 }
