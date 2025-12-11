@@ -100,6 +100,6 @@ class LLMPlayer(ABC):
         system_info = self.get_system_info_message()
         self.logger.log("prompt for get_vote", prompt)
         self.logger.log("system_info for get_vote", system_info)
-        vote = self.llm.generate(prompt, system_info)
+        vote = self.llm.generate(prompt,False, system_info)
         self.logger.log("generated vote in get_vote", vote)
         return vote

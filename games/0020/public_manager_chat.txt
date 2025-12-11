@@ -1,0 +1,4 @@
+[19:52:42] Game-Manager: Now it's Discussion Time for 2.0 minutes. Everyone can communicate. Try to identify who the AI is!
+[19:54:42] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[19:55:07] Game-Manager: Voting results:\nSummary:\n  River: 2 votes\n  Lennon: 1 vote\n  Ari: 0 votes
+[19:55:07] Game-Manager: River was eliminated. They were: AI

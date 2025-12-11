@@ -21,7 +21,7 @@ class FineTunedPlayer(LLMPlayer):
 
     def generate_message(self, message_history):
         prompt = self.create_prompt(message_history)
-        potential_answer = self.llm.generate(prompt)
+        potential_answer = self.llm.generate(prompt, False)
         if self.should_generate_message(potential_answer):
             return potential_answer
         else:

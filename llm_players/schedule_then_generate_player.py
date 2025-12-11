@@ -1,7 +1,7 @@
 import re
 from game_constants import REMAINING_PLAYERS_FILE, GAME_MANAGER_NAME, MESSAGE_PARSING_PATTERN
 from llm_players.llm_constants import turn_task_into_prompt, SCHEDULE_THEN_GENERATE_TYPE, \
-    make_more_human_like, SCHEDULING_GENERATION_PARAMETERS, TALKATIVE_PROMPT, QUIETER_PROMPT
+    make_more_human_like, TALKATIVE_PROMPT, QUIETER_PROMPT
 from llm_players.llm_player import LLMPlayer
 from llm_players.llm_wrapper import LLMWrapper
 
@@ -32,8 +32,7 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
         prompt = self.create_scheduling_prompt(message_history)
         self.logger.log("prompt in should_generate_message", prompt)
         decision = self.scheduler.generate(
-            prompt, self.get_system_info_message(only_special_tokens=True),
-            SCHEDULING_GENERATION_PARAMETERS)
+            prompt, True, self.get_system_info_message(only_special_tokens=True))
         self.logger.log("decision in should_generate_message", decision)
         return self.interpret_scheduling_decision(decision)
 
@@ -42,7 +41,7 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
             prompt = self.create_generation_prompt(message_history)
             self.logger.log("prompt in generate_message", prompt)
             message = self.llm.generate(
-                prompt, self.get_system_info_message(attention_to_not_repeat=True))
+                prompt, False, self.get_system_info_message(attention_to_not_repeat=True))
             message = make_more_human_like(message)
             return message
         else:

@@ -22,14 +22,14 @@ class GenerateThenSchedulePlayer(LLMPlayer):
         self.logger.log("message_history in should_generate_message", message_history)
         prompt = self.create_scheduling_prompt(potential_message, message_history)
         self.logger.log("prompt in should_generate_message", prompt)
-        decision = self.scheduler.generate(prompt, self.get_system_info_message())
+        decision = self.scheduler.generate(prompt, False, self.get_system_info_message())
         self.logger.log("decision in should_generate_message", decision)
         return self.interpret_scheduling_decision(decision)
 
     def generate_message(self, message_history):
         prompt = self.create_generation_prompt(message_history)
         self.logger.log("prompt in generate_message", prompt)
-        potential_message = self.llm.generate(prompt, self.get_system_info_message())
+        potential_message = self.llm.generate(prompt, False, self.get_system_info_message())
         potential_message = make_more_human_like(potential_message)
         self.logger.log("potential_message in generate_message", potential_message)
         if self.should_generate_message([potential_message] + message_history):

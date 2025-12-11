@@ -1,0 +1,4 @@
+[18:02:02] Game-Manager: Now it's Discussion Time for 2.0 minutes. Everyone can communicate. Try to identify who the AI is!
+[18:04:02] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[18:04:14] Game-Manager: Voting results:\nSummary:\n  Bailey: 1 vote\n  Peyton: 1 vote\n  Harper: 1 vote
+[18:04:14] Game-Manager: Bailey was eliminated. They were: Human

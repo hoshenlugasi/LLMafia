@@ -35,7 +35,7 @@ class EveryXMessagesPlayer(LLMPlayer):  # TODO implement this!
         if self.should_generate_message(message_history):
             prompt = self.create_generation_prompt(message_history)
             self.logger.log("prompt in generate_message", prompt)
-            message = self.llm.generate(prompt, self.get_system_info_message())
+            message = self.llm.generate(prompt, False, self.get_system_info_message())
             message = make_more_human_like(message)
             return message
         else:

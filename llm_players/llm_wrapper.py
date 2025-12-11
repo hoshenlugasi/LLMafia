@@ -2,13 +2,21 @@ import os
 import time
 from functools import cache
 from pathlib import Path
+from google import genai
 
 from game_constants import get_current_timestamp
-from llm_players.llm_constants import TASK2OUTPUT_FORMAT, INITIAL_GENERATION_PROMPT, \
-    INSTRUCTION_INPUT_RESPONSE_PATTERN, LLAMA3_PATTERN, DEFAULT_PROMPT_PATTERN, NUM_BEAMS_KEY, \
-    MODEL_NAME_KEY, USE_PIPELINE_KEY, PIPELINE_TASK_KEY, MAX_NEW_TOKENS_KEY, GENERAL_SYSTEM_INFO, \
-    REPETITION_PENALTY_KEY, GENERATION_PARAMETERS, USE_TOGETHER_KEY, TOGETHER_API_KEY_KEYWORD, \
-    SECRETS_DICT_FILE_PATH, SLEEPING_TIME_FOR_API_GENERATION_ERROR
+from llm_players.llm_constants import (TASK2OUTPUT_FORMAT, INITIAL_GENERATION_PROMPT, \
+                                       INSTRUCTION_INPUT_RESPONSE_PATTERN, LLAMA3_PATTERN, DEFAULT_PROMPT_PATTERN,
+                                       NUM_BEAMS_KEY, \
+                                       MODEL_NAME_KEY, USE_PIPELINE_KEY, PIPELINE_TASK_KEY, MAX_NEW_TOKENS_KEY,
+                                       GENERAL_SYSTEM_INFO, \
+                                       REPETITION_PENALTY_KEY, USE_TOGETHER_KEY, TOGETHER_API_KEY_KEYWORD, \
+                                       SECRETS_DICT_FILE_PATH, SLEEPING_TIME_FOR_API_GENERATION_ERROR, USE_GEMINI_KEY,
+                                       GEMINI_API_KEY_KEYWORD, GEMINI_GENERATION_PARAMETERS,
+                                       TOGETHER_GENERATION_PARAMETERS, HUGGINGFACE_GENERATION_PARAMETERS,
+                                       TOGETHER_SCHEDULING_GENERATION_PARAMETERS,
+                                       HUGGINGFACE_SCHEDULING_GENERATION_PARAMETERS,
+                                       GEMINI_SCHEDULING_GENERATION_PARAMETERS, QWEN_PATTERN)
 
 print("Trying to import torch...", get_current_timestamp())
 import torch
@@ -46,8 +54,8 @@ def cached_pipeline(model_name, task):
     return pipeline(task, model_name, device_map="auto")
 
 
-def get_together_api_key():
-    key = os.environ.get(TOGETHER_API_KEY_KEYWORD)
+def get_api_key(key_type):
+    key = os.environ.get(key_type)
     if key:
         return key
     secrets_file = Path(SECRETS_DICT_FILE_PATH)
@@ -56,11 +64,10 @@ def get_together_api_key():
             secrets = eval(secrets_file.read_text())
         except (ValueError, NameError):
             return None
-        return secrets.get(TOGETHER_API_KEY_KEYWORD)
+        return secrets.get(key_type)
     else:
         print("\n\n\nMISSING SECRETS DICT FILE!!!!!\n\n\n")
     return None
-
 
 class LLMWrapper:
 
@@ -69,28 +76,45 @@ class LLMWrapper:
         self.model_name = llm_config[MODEL_NAME_KEY]
         self.use_together = llm_config.get(USE_TOGETHER_KEY)
         self.use_pipeline = llm_config[USE_PIPELINE_KEY]
+        self.use_gemini = llm_config.get(USE_GEMINI_KEY)
         self.pipeline_task = llm_config[PIPELINE_TASK_KEY]
-        self.generation_parameters = {key: value for key, value in llm_config.items()
-                                      if key in GENERATION_PARAMETERS}
-        if (NUM_BEAMS_KEY in self.generation_parameters
-            and self.generation_parameters[NUM_BEAMS_KEY] < 2):
-            del self.generation_parameters[NUM_BEAMS_KEY]
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.prompt_template = self._get_prompt_template()
-        if self.use_together:
-            self.client = Together(api_key=get_together_api_key())
+
+        if self.use_gemini:
+            self.client = genai.Client(api_key=get_api_key(GEMINI_API_KEY_KEYWORD))
             self.pipeline = self.tokenizer = self.model = None
+            generation_params = GEMINI_GENERATION_PARAMETERS
+            scheduling_generation_params = GEMINI_SCHEDULING_GENERATION_PARAMETERS
+        elif self.use_together:
+            self.client = Together(api_key=get_api_key(TOGETHER_API_KEY_KEYWORD))
+            self.pipeline = self.tokenizer = self.model = None
+            generation_params = TOGETHER_GENERATION_PARAMETERS
+            scheduling_generation_params = TOGETHER_SCHEDULING_GENERATION_PARAMETERS
         elif self.use_pipeline:
             self.pipeline = cached_pipeline(self.model_name, self.pipeline_task)
             self.client = self.tokenizer = self.model = None
+            generation_params = HUGGINGFACE_GENERATION_PARAMETERS
+            scheduling_generation_params = HUGGINGFACE_SCHEDULING_GENERATION_PARAMETERS
         else:
             self.pipeline = self.client = None
             self.tokenizer = cached_tokenizer(self.model_name)
             self.model = cached_model(self.model_name)
             self.model.to(self.device)
             self.model.eval()
+            generation_params = HUGGINGFACE_GENERATION_PARAMETERS
+            scheduling_generation_params = HUGGINGFACE_SCHEDULING_GENERATION_PARAMETERS
+
+        self.generation_parameters = {key: value for key, value in llm_config.items()
+                                      if key in generation_params}
+        self.scheduling_generation_parameters = {key: value for key, value in llm_config.items()
+                                      if key in scheduling_generation_params}
+        if (NUM_BEAMS_KEY in self.generation_parameters
+            and self.generation_parameters[NUM_BEAMS_KEY] < 2):
+            del self.generation_parameters[NUM_BEAMS_KEY]
+
         # initial generation just to save time of first generation in real time
-        self.generate(INITIAL_GENERATION_PROMPT, system_info=GENERAL_SYSTEM_INFO)
+        self.generate(INITIAL_GENERATION_PROMPT, False, system_info=GENERAL_SYSTEM_INFO)
 
     def _get_prompt_template(self):
         model_name = self.model_name.lower()
@@ -99,11 +123,13 @@ class LLMWrapper:
         elif "llama-3" in model_name:
             return LLAMA3_PATTERN
         # elif "____" in model_name: return "____"
+        elif "qwen" in model_name:
+            return QWEN_PATTERN
         else:
             return DEFAULT_PROMPT_PATTERN
 
     def pipeline_preprocessing(self, input_text, system_info):
-        if self.prompt_template in (INSTRUCTION_INPUT_RESPONSE_PATTERN, LLAMA3_PATTERN):
+        if self.prompt_template in (INSTRUCTION_INPUT_RESPONSE_PATTERN, LLAMA3_PATTERN, QWEN_PATTERN):
             system_message = [{"role": "system", "content": system_info}] if system_info else []
             return system_message + [{"role": "user", "content": input_text}]
         else:
@@ -145,11 +171,17 @@ class LLMWrapper:
         else:
             raise NotImplementedError("Missing output template for used model")
 
-    def generate(self, input_text, system_info="", generation_parameters=None):
-        if generation_parameters is None:
+    def generate(self, input_text, is_scheduler=False, system_info=""):
+        if is_scheduler:
+            generation_parameters = self.scheduling_generation_parameters
+        else:
             generation_parameters = self.generation_parameters
         with torch.inference_mode():
-            if self.use_together:
+            if self.use_gemini:
+                self.logger.log("messages in generate with self.use_gemini", system_info + "\n\n" + input_text)
+                final_output = self.generate_with_gemini(input_text, system_info, generation_parameters)
+                self.logger.log("final_output in generate with self.use_gemini", final_output)
+            elif self.use_together:
                 messages = self.pipeline_preprocessing(input_text, system_info)
                 self.logger.log("messages in generate with self.use_together", messages)
                 final_output = self.generate_with_together_safely(messages, generation_parameters)  # max_new_tokens -> max_tokens
@@ -186,3 +218,16 @@ class LLMWrapper:
                 self.logger.log("error generating with TogetherAI", str(e))
                 time.sleep(SLEEPING_TIME_FOR_API_GENERATION_ERROR)
         return output
+
+    def generate_with_gemini(self, input_text, system_info, generation_parameters):
+        if system_info:
+            full_prompt = system_info + "\n\n" + input_text
+        else:
+            full_prompt = input_text
+
+        response = self.client.models.generate_content(
+            model=self.model_name,
+            contents=full_prompt,
+        )
+
+        return response.text if hasattr(response, "text") else str(response)
