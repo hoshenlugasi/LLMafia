@@ -10,6 +10,6 @@ class Logger:
         self.log_file = game_dir / LLM_LOG_FILE_FORMAT.format(name)
 
     def log(self, operation, content):
-        with open(self.log_file, "a") as f:
+        with open(self.log_file, "a", encoding='utf-8') as f:
             f.write(NEW_LOG_FORMAT.format(time=get_current_timestamp(),
                                           operation=operation, content=content))

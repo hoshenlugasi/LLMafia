@@ -30,29 +30,24 @@ class LLMPlayer(ABC):
         if chat_room_open_time:  # if the game has started, the file isn't empty
             system_info += f"The game's chat room was open at [{chat_room_open_time}].\n"
         if attention_to_not_repeat:
-            # system_info += "Note: Do not repeat any messages already present in the message history below!\n"
-            system_info += "IMPORTANT RULES FOR RESPONSES:\n" \
-                           "1. Never repeat the exact messages you've said before! " \
-                           "(as detailed bellow)\n" \
-                           "2. Your response must be different in both wording and meaning " \
-                           "from your previous messages.\n" \
-                           "3. Keep your message short and casual, " \
-                           "matching the style of recent messages.\n" \
-                           "4. Don't use comma or other punctuation marks.\n" \
-                           "5. Focus on adding new information or reactions " \
-                           "to the current situation.\n" \
-                           "6. Don't start messages with common phrases you've used before.\n"
+            # Show recent previous messages to prevent repetition
             previous_messages = (self.game_dir / PERSONAL_CHAT_FILE_FORMAT.format(self.name)
                                  ).read_text().splitlines()
             if previous_messages:
-                system_info += "The following message are the previous messages that you've " \
-                               "sent and you should never repeat:\n"
-                for message in previous_messages:
+                system_info += "\n--- YOUR RECENT MESSAGES (for reference, to avoid repeating) ---\n"
+                # Show only last 5 messages to keep context manageable
+                for message in previous_messages[-5:]:
                     matcher = re.match(MESSAGE_PARSING_PATTERN, message)
                     if not matcher:
                         continue
                     message_content = matcher.group(5)  # depends on MESSAGE_PARSING_PATTERN
-                    system_info += f"* \"{message_content}\"\n"
+                    system_info += f"  • \"{message_content}\"\n"
+                
+                system_info += "\nIMPORTANT REMINDERS:\n"
+                system_info += "1. Don't repeat the same idea or argument from your previous messages above\n"
+                system_info += "2. If someone asks you personal questions (age, location, studies), ANSWER them directly using your identity\n"
+                system_info += "3. Keep responses casual and natural - avoid formal or robotic language\n"
+                system_info += "4. Vary your reactions - don't use the same phrases repeatedly\n"
         if only_special_tokens:
             system_info += f"You can ONLY respond with one of two possible outputs:\n" \
                            f"{self.pass_turn_token} - indicating your character in the game " \

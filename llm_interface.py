@@ -43,7 +43,7 @@ def get_llm_player():
 
 
 def read_messages_from_file(message_history, file_name, num_read_lines):
-    with open(game_dir / file_name, "r") as f:
+    with open(game_dir / file_name, "r", encoding='utf-8') as f:
         lines = f.readlines()[num_read_lines:]
     message_history.extend(lines)
     return len(lines)

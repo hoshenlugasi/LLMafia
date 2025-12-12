@@ -81,41 +81,34 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
             return QUIETER_PROMPT
 
     def create_scheduling_prompt(self, message_history):
-        # removed these because of too many talks:
-        # "If one of the last messages has mentioned you, then choose to send a message now."
+        # Check if AI is mentioned in recent messages
+        mentioned_recently = False
+        if message_history:
+            # Check last 3 messages for mentions
+            for message in message_history[-3:]:
+                if self.name.lower() in message.lower():
+                    mentioned_recently = True
+                    break
+        
         task = f"Do you want to send a message to the group chat now, or do you prefer to wait " \
-               f"for now and see what messages others will send? " \
-               f"Remember to choose to send a message only if your contribution to the " \
-               f"discussion in the current time will be meaningful enough. " \
-               f"{self.talkative_scheduling_prompt_modifier(message_history).strip()} " \
-               f"Reply only with `{self.use_turn_token}` if you want to send a message now, " \
-               f"or only with `{self.pass_turn_token}` if you want to wait for now, " \
-               f"based on your decision! "
+               f"for now and see what messages others will send? "
+        
+        if mentioned_recently:
+            task += f"NOTE: Someone just mentioned your name ({self.name}) in the recent messages - " \
+                    f"it would be natural to respond when directly addressed! "
+        
+        task += f"Remember to choose to send a message only if your contribution to the " \
+                f"discussion in the current time will be meaningful enough. " \
+                f"{self.talkative_scheduling_prompt_modifier(message_history).strip()} " \
+                f"Reply only with `{self.use_turn_token}` if you want to send a message now, " \
+                f"or only with `{self.pass_turn_token}` if you want to wait for now, " \
+                f"based on your decision! "
         return turn_task_into_prompt(task, message_history)
 
     def create_generation_prompt(self, message_history):
         task = f"Add a very short message to the game's chat. " \
-               f"Be specific and keep it relevant to the current situation, " \
-               f"according to the last messages and the game's status. " \
+               f"Be specific and keep it relevant to the current situation. " \
                f"Your message should only be one short sentence! " \
-               f"Don't add a message that you've already added (in the chat history)! " \
-               f"It is very important that you don't repeat yourself! " \
-               f"Match your style of message to the other player's message style, " \
-               f"with more emphasis on more recent messages.\n" #\
-               # f"Here are some examples of possible messages from a hypothetical game's chat, " \
-               # f"as style inspiration:\n" \
-               # f"\"I'm telling you guys, we can't trust Joseph\",\n" \
-               # f"\"Jessica is sus\",\n" \
-               # f"\"i think it is phoebe, she knew that diane was mafia and she tried to blame someone else\",\n" \
-               # f"\"John is probably mafia, diane was mafia and voted for lindsay who voted for john\",\n" \
-               # f"\"John is out tho\",\n" \
-               # f"\"i figured out diane is mafia\",\n" \
-               # f"\"jennifer is the mafia for sure! she didn't vote with us\",\n" \
-               # f"\"why would i kill mafia if i was mafia ?\",\n" \
-               # f"\"Jennifer is too quiet\",\n" \
-               # f"\"they only try to gain our trust\",\n" \
-               # f"\"exactly\",\n" \
-               # f"\"because they are the only one that didnt vote diane\",\n" \
-               # f"\"i think Moe is so loud\",\n" \
-               # f"\"jennifer, do you have anything to say for yourself?\"...\n"
+               f"Match your style to the other players' message style, " \
+               f"with more emphasis on more recent messages."
         return turn_task_into_prompt(task, message_history)
