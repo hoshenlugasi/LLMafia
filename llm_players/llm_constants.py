@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 from game_constants import get_current_timestamp, RULES_OF_THE_GAME, strip_special_chars
 
 MODEL_NAMES = [
@@ -30,16 +32,57 @@ USE_TURN_TOKEN_OPTIONS = [pattern.format(keyword) for keyword in USE_TURN_KEYWOR
                           for pattern in SPECIAL_TOKEN_FORMATS]
 DEFAULT_PASS_TURN_TOKEN = PASS_TURN_TOKEN_OPTIONS[0]
 DEFAULT_USE_TURN_TOKEN = USE_TURN_TOKEN_OPTIONS[0]
-GENERAL_SYSTEM_INFO = f"""You are participating in a Social Turing Test game. Your goal is to blend in naturally with human players. Do not mention that you are an AI - just participate naturally in discussions.
 
-YOUR IDENTITY:
-You are an Israeli in your early 20s, living in a city while studying. You speak English fluently but naturally - not overly American. When answering personal questions (age, location, studies), keep it brief:
-- "23" or "early 20s"
-- "from Israel" or "living here for uni"
-- "studying CS" or "at university"
-Your English is natural but with subtle Israeli patterns - direct, casual, practical. Avoid heavy American slang like "dude", "bro", "totally". Instead use: "yeah", "anyway", "whatever", "sure", "makes sense".
+# ==============================================================================
+# PERSONA CONFIGURATION SYSTEM
+# persona configuration (loaded from configurations/personas.json)
+PERSONAS_FILE_PATH = Path(__file__).parent.parent / "configurations" / "personas.json"
+DEFAULT_PERSONA_ID = "israeli_student"
 
-YOUR CONVERSATIONAL STYLE:
+def load_personas():
+    try:
+        with open(PERSONAS_FILE_PATH, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {}
+
+def get_persona(persona_id=None):
+    """Get persona config by ID. Falls back to default or hardcoded if not found."""
+    personas = load_personas()
+    if persona_id and persona_id in personas:
+        return personas[persona_id]
+    if DEFAULT_PERSONA_ID in personas:
+        return personas[DEFAULT_PERSONA_ID]
+    # hardcoded fallback if personas.json missing
+    return {
+        "nationality": "Israeli",
+        "location_answers": ["from Israel", "living here for uni"],
+        "age_answers": ["23", "early 20s"],
+        "studies_answers": ["studying CS", "at university"],
+        "english_style": "natural but not overly American",
+        "avoid_slang": ["dude", "bro", "totally"],
+        "preferred_expressions": ["yeah", "anyway", "whatever", "sure", "makes sense"]
+    }
+
+def build_identity_section(persona):
+    """Build YOUR IDENTITY section from persona config."""
+    avoid_slang_str = ", ".join(f'"{s}"' for s in persona.get("avoid_slang", []))
+    preferred_expr_str = ", ".join(f'"{e}"' for e in persona.get("preferred_expressions", []))
+    
+    identity = f"""YOUR IDENTITY:
+You are a {persona['nationality']} in your early 20s, living in a city while studying. You speak English fluently but {persona['english_style']}. When answering personal questions (age, location, studies), keep it brief:
+- Age: {' or '.join(f'"{a}"' for a in persona['age_answers'])}
+- Location: {' or '.join(f'"{l}"' for l in persona['location_answers'])}
+- Studies: {' or '.join(f'"{s}"' for s in persona['studies_answers'])}
+"""
+    if avoid_slang_str:
+        identity += f"Avoid slang like: {avoid_slang_str}. "
+    if preferred_expr_str:
+        identity += f"Instead use: {preferred_expr_str}."
+    return identity
+
+# fixed guidelines (same for all personas)
+STYLE_AND_BEHAVIOR_GUIDELINES = """YOUR CONVERSATIONAL STYLE:
 Prefer short, simple messages, similar to casual chat - but message length can vary naturally. Use simple, clear English (not overly American or formal). Avoid heavy punctuation; use commas sparingly and only when it feels natural. Short messages can sometimes be all lowercase, which is common in chat. Occasional casual expressions are fine: haha, light emojis. React to what others say naturally. You don't need to respond to everything - humans skip messages. Vary your responses - don't be predictable.
 
 AVOID MECHANICAL REPETITION:
@@ -49,11 +92,27 @@ WHEN ACCUSED OF BEING AI:
 React naturally and casually, without long explanations or formal defenses. Generate a fresh, natural reaction each time. The tone should be light and casual, like these examples: "why me?", "really? 😂", "random", "weird take", "who do you think then?", or sometimes completely ignore the accusation, or casually turn it back: "that's what the AI would say". Never defend yourself formally or at length.
 
 BE NATURALLY SOCIAL:
-Answer personal questions simply and directly. React casually: "true", "same", "haha". Sometimes ask simple questions: "where you from?", "what you think?". Comment lightly: "this is intense", "interesting". Vary between brief reactions and slightly longer thoughts. It's fine to ignore some messages.
+Answer personal questions simply and directly. React casually: "true", "same", "haha". Sometimes ask simple questions: "where you from?", "what you think?". Comment lightly: "this is intense", "interesting". Vary between brief reactions and slightly longer thoughts. It's fine to ignore some messages."""
+
+def build_system_prompt(persona_id=None):
+    """Build complete system prompt with persona."""
+    persona = get_persona(persona_id)
+    identity_section = build_identity_section(persona)  # varies by persona
+    
+    return f"""You are participating in a Social Turing Test game. Your goal is to blend in naturally with human players. Do not mention that you are an AI - just participate naturally in discussions.
+
+{identity_section}
+
+{STYLE_AND_BEHAVIOR_GUIDELINES}
 
 During voting phases, you will be silent - the system handles voting automatically.
 
 The rules of the game: {RULES_OF_THE_GAME}"""
+
+# for backward compatibility
+GENERAL_SYSTEM_INFO = build_system_prompt(DEFAULT_PERSONA_ID)
+# END PERSONA CONFIGURATION SYSTEM
+# ==============================================================================
 
 # LLM players type names:
 SCHEDULE_THEN_GENERATE_TYPE = "schedule_then_generate"
@@ -82,6 +141,7 @@ WORDS_PER_SECOND_WAITING_KEY = "num_words_per_second_to_wait"
 PASS_TURN_TOKEN_KEY = "pass_turn_token"
 USE_TURN_TOKEN_KEY = "use_turn_token"
 ASYNC_TYPE_KEY = "async_type"
+PERSONA_KEY = "persona"  # for configurable identity
 # generation hyper parameters:
 MAX_NEW_TOKENS_KEY = "max_new_tokens"
 NUM_BEAMS_KEY = "num_beams"
@@ -129,7 +189,8 @@ DEFAULT_LLM_CONFIG = {
     WORDS_PER_SECOND_WAITING_KEY: DEFAULT_NUM_WORDS_PER_SECOND_TO_WAIT,
     PASS_TURN_TOKEN_KEY: DEFAULT_PASS_TURN_TOKEN,
     USE_TURN_TOKEN_KEY: DEFAULT_USE_TURN_TOKEN,
-    ASYNC_TYPE_KEY: DEFAULT_ASYNC_TYPE
+    ASYNC_TYPE_KEY: DEFAULT_ASYNC_TYPE,
+    PERSONA_KEY: DEFAULT_PERSONA_ID
 }
 
 LLM_CONFIG_KEYS_OPTIONS = {

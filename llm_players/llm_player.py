@@ -3,7 +3,8 @@ from abc import ABC, abstractmethod
 from game_constants import get_role_string, GAME_START_TIME_FILE, PERSONAL_CHAT_FILE_FORMAT, \
     MESSAGE_PARSING_PATTERN, SCHEDULING_DECISION_LOG, MODEL_CHOSE_TO_USE_TURN_LOG, MODEL_CHOSE_TO_PASS_TURN_LOG
 from llm_players.llm_constants import turn_task_into_prompt, GENERAL_SYSTEM_INFO, \
-    PASS_TURN_TOKEN_KEY, USE_TURN_TOKEN_KEY, WORDS_PER_SECOND_WAITING_KEY, PASS_TURN_TOKEN_OPTIONS
+    PASS_TURN_TOKEN_KEY, USE_TURN_TOKEN_KEY, WORDS_PER_SECOND_WAITING_KEY, PASS_TURN_TOKEN_OPTIONS, \
+    PERSONA_KEY, build_system_prompt
 from llm_players.llm_wrapper import LLMWrapper
 from llm_players.logger import Logger
 
@@ -21,10 +22,14 @@ class LLMPlayer(ABC):
         self.pass_turn_token = llm_config[PASS_TURN_TOKEN_KEY]
         self.use_turn_token = llm_config[USE_TURN_TOKEN_KEY]
         self.num_words_per_second_to_wait = llm_config[WORDS_PER_SECOND_WAITING_KEY]
+        # Get persona from config, or use None for default
+        self.persona_id = llm_config.get(PERSONA_KEY, None)
+        # Build personalized system prompt
+        self.system_prompt = build_system_prompt(self.persona_id)
         self.llm = LLMWrapper(self.logger, **llm_config)
 
     def get_system_info_message(self, attention_to_not_repeat=False, only_special_tokens=False):
-        system_info = f"Your name is {self.name}. {GENERAL_SYSTEM_INFO}\n" \
+        system_info = f"Your name is {self.name}. {self.system_prompt}\n" \
                       f"You were assigned the following role: {self.role}.\n"
         chat_room_open_time = (self.game_dir / GAME_START_TIME_FILE).read_text().strip()
         if chat_room_open_time:  # if the game has started, the file isn't empty

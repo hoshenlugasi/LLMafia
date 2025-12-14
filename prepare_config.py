@@ -43,7 +43,7 @@ from game_constants import DEFAULT_CONFIG_DIR, DEFAULT_NUM_PLAYERS, DEFAULT_NUM_
     WARNING_LIMIT_NUM_MAFIA, PLAYERS_KEY_IN_CONFIG, DEFAULT_DAYTIME_MINUTES, \
     DAYTIME_MINUTES_KEY, ANONYMOUS_VOTING_KEY
 from llm_players.llm_constants import INT_CONFIG_KEYS, FLOAT_CONFIG_KEYS, DEFAULT_LLM_CONFIG, \
-    LLM_CONFIG_KEYS_OPTIONS, BOOL_CONFIG_KEYS
+    LLM_CONFIG_KEYS_OPTIONS, BOOL_CONFIG_KEYS, PERSONA_KEY, DEFAULT_PERSONA_ID, load_personas
 
 LLM_CONFIG_KEYS_INDEXED_OPTIONS = {
     key: {f"{i}": option for (i, option) in enumerate(options)}
@@ -96,6 +96,10 @@ def parse_args():
                         help="number of minutes for Nighttime phase (deprecated - always 0 in Social Turing Test)")
     parser.add_argument("-a", "--anonymous_voting", action="store_true",
                         help="whether to use anonymous voting (show vote counts instead of individual votes)")
+    parser.add_argument("-pe", "--persona", default=None,
+                        help="persona for the AI player (e.g., 'introverted_teen', 'sarcastic_player', etc.)")
+    parser.add_argument("-t", "--topic", default=None,
+                        help="conversation topic for the game (e.g., 'favorite_movies', 'hobbies', etc.)")
     args = parser.parse_args()
     return args
 
@@ -155,14 +159,33 @@ def get_llm_config(llm_numbered_symbol, args):
             llm_config = json.load(f)
     else:
         llm_config = DEFAULT_LLM_CONFIG.copy()  # pay attention it is shallow copy of primitives
+    
+    # Handle persona selection with improved validation
+    if args.persona is not None:
+        personas = load_personas()
+        if args.persona in personas:
+            llm_config[PERSONA_KEY] = args.persona
+            persona_info = personas[args.persona]
+            persona_display_name = persona_info.get('name', args.persona)
+            print(colored(f"✓ Using persona: {persona_display_name} ('{args.persona}')", "green"))
+        else:
+            print(colored(f"✗ Error: Persona '{args.persona}' not found!", "red"))
+            available = list(personas.keys()) if personas else ['israeli_student', 'american_student', 'british_student', 'australian_student']
+            print(f"Available personas: {', '.join(sorted(available))}")
+            print(colored(f"Using default persona instead.", "yellow"))
+            llm_config[PERSONA_KEY] = DEFAULT_PERSONA_ID
+    elif PERSONA_KEY not in llm_config:
+        # Ensure default persona is set if not specified
+        llm_config[PERSONA_KEY] = DEFAULT_PERSONA_ID
+    
     if args.change_llm_config:
         config_approved = False
         index2key = {f"{i}": key for i, key in enumerate(llm_config.keys())}
         while not config_approved:
             print(f"Here is the current config for {llm_numbered_symbol}:")
-            for i, key in index2key.keys():
+            for i, key in index2key.items():
                 print(f"{i}.\t{key}: {llm_config[key]}")
-            index = input("Enter and key index to change its value, "
+            index = input("Enter a key index to change its value, "
                           "or anything else to approve the config: ")
             if index in index2key:
                 key = index2key[index]
@@ -173,13 +196,24 @@ def get_llm_config(llm_numbered_symbol, args):
                 elif key in BOOL_CONFIG_KEYS:
                     llm_config[key] = eval(input(f"Enter True/False for {key}: ").capitalize())
                 else:
+                    # Handle persona and other option-based configs
+                    if key == PERSONA_KEY:
+                        personas = load_personas()
+                        options = list(personas.keys()) if personas else ['israeli_student', 'american_student', 'british_student', 'australian_student']
+                        indexed_options = {f"{i}": option for i, option in enumerate(options)}
+                    elif callable(LLM_CONFIG_KEYS_OPTIONS.get(key)):
+                        options = LLM_CONFIG_KEYS_OPTIONS[key]()
+                        indexed_options = {f"{i}": option for i, option in enumerate(options)}
+                    else:
+                        indexed_options = LLM_CONFIG_KEYS_INDEXED_OPTIONS.get(key, {})
+                    
                     choice = None
-                    while choice not in LLM_CONFIG_KEYS_INDEXED_OPTIONS[key]:
+                    while choice not in indexed_options:
                         all_options = "\n".join([f"\t{i}: {option}" for (i, option)
-                                                 in LLM_CONFIG_KEYS_INDEXED_OPTIONS[key].items()])
+                                                 in indexed_options.items()])
                         choice = input(f"Choose the wanted option for {key}:\n"
                                        f"{all_options}\n")
-                    llm_config[key] = LLM_CONFIG_KEYS_INDEXED_OPTIONS[key][choice]
+                    llm_config[key] = indexed_options[choice]
             else:
                 config_approved = True
     return llm_config

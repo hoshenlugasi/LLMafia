@@ -20,6 +20,7 @@
             "is_llm": true,
             "real_name": "LLM0",
             "llm_config": {
+                "persona": "israeli_student",
                 "model_name": "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
                 "use_together": true,
                 "use_pipeline": false,
