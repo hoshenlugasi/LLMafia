@@ -1,14 +1,18 @@
 import os
 import json
 import argparse
+import random
 from pathlib import Path
 from game_constants import DIRS_PREFIX, DEFAULT_GAME_CONFIG, GAME_ID_NUM_DIGITS, GAME_CONFIG_FILE, \
     PLAYER_NAMES_FILE, REMAINING_PLAYERS_FILE, AI_PLAYER_FILE, PHASE_STATUS_FILE, DAYTIME, \
     PUBLIC_MANAGER_CHAT_FILE, PUBLIC_DAYTIME_CHAT_FILE, WHO_WINS_FILE, \
     GAME_START_TIME_FILE, NOTES_FILE, REAL_NAME_CODENAME_DELIMITER, REAL_NAMES_FILE, \
     PLAYERS_KEY_IN_CONFIG, PERSONAL_STATUS_FILE_FORMAT, PERSONAL_CHAT_FILE_FORMAT, \
-    PERSONAL_VOTE_FILE_FORMAT, LLM_LOG_FILE_FORMAT, PERSONAL_SURVEY_FILE_FORMAT
+    PERSONAL_VOTE_FILE_FORMAT, LLM_LOG_FILE_FORMAT, PERSONAL_SURVEY_FILE_FORMAT, \
+    CONVERSATION_TOPIC_FILE
 from prepare_config import PlayerConfig
+
+CONVERSATION_TOPICS_FILE = Path("configurations/conversation_topics.json")
 
 
 def get_next_free_game_id():
@@ -43,6 +47,33 @@ def get_id_and_config():
     return game_id, config_path
 
 
+def select_conversation_topic(config):
+    """
+    Select a conversation topic for the game.
+    Returns None if feature is disabled or no topic available.
+    """
+    # Check if conversation topic feature is enabled (default: False)
+    if not config.get("enable_conversation_topic", False):
+        print("Conversation topic feature is disabled (enable_conversation_topic=false)")
+        return None
+    
+    # Check if specific topic provided in config
+    if "conversation_topic" in config:
+        return config["conversation_topic"]
+    
+    # Otherwise, random from default pool
+    if CONVERSATION_TOPICS_FILE.exists():
+        try:
+            with open(CONVERSATION_TOPICS_FILE) as f:
+                topics = json.load(f)
+            default_topics = topics.get("default", [])
+            if default_topics:
+                return random.choice(default_topics)
+        except (json.JSONDecodeError, KeyError):
+            pass  # Fall through to None if file is malformed
+    
+    return None  # Fallback: no topic
+
 def init_game(game_id, config_path):
     game_dir = Path(DIRS_PREFIX) / game_id
     game_dir.mkdir(mode=0o777)
@@ -66,6 +97,14 @@ def init_game(game_id, config_path):
     (game_dir / WHO_WINS_FILE).touch()
     (game_dir / GAME_START_TIME_FILE).touch()
     (game_dir / NOTES_FILE).touch()
+    
+    # Select and store conversation topic
+    topic = select_conversation_topic(config)
+    if topic:
+        (game_dir / CONVERSATION_TOPIC_FILE).write_text(topic)
+        print(f"Selected conversation topic: {topic}")
+    else:
+        (game_dir / CONVERSATION_TOPIC_FILE).touch()  # Create empty file for backward compatibility
     for player in players:
         (game_dir / PERSONAL_CHAT_FILE_FORMAT.format(player.name)).touch()
         (game_dir / PERSONAL_VOTE_FILE_FORMAT.format(player.name)).touch()

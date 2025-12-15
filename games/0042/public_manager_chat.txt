@@ -1,0 +1,6 @@
+[12:01:22] Game-Manager: 🎮 Welcome! Let's play 🕵️\n\nYou have 2.0 minutes to chat.\nOne of you is an AI — can you find them? 👀
+[12:03:22] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[12:03:30] Game-Manager: Noah was eliminated. They were: Human
+[12:03:30] Game-Manager: 🎮 Welcome! Let's play 🕵️\n\nYou have 2.0 minutes to chat.\nOne of you is an AI — can you find them? 👀
+[12:05:30] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[12:05:45] Game-Manager: Harley was eliminated. They were: AI

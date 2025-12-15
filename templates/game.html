@@ -634,6 +634,44 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #555;
         }
+        
+        /* Game Over Reveal Animations */
+        @keyframes revealPop {
+            0% {
+                transform: scale(0.5);
+                opacity: 0;
+            }
+            70% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes aiNamePulse {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.1);
+            }
+        }
+        
+        #gameOverReveal.show {
+            display: flex !important;
+        }
+        
+        .reveal-outcome.humans-win {
+            color: #28a745;
+            text-shadow: 2px 2px 4px rgba(40, 167, 69, 0.3);
+        }
+        
+        .reveal-outcome.ai-wins {
+            color: #dc3545;
+            text-shadow: 2px 2px 4px rgba(220, 53, 69, 0.3);
+        }
     </style>
 </head>
 <body>
@@ -693,17 +731,27 @@
         </div>
     </div>
     
+    <!-- Game Over Reveal Modal (NEW) -->
+    <div id="gameOverReveal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 100000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 20px; padding: 50px; max-width: 600px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.5); animation: revealPop 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);">
+            <div style="font-size: 36px; margin-bottom: 30px; color: #667eea; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);">🎭 THE REVEAL</div>
+            <div style="font-size: 24px; color: #666; margin-bottom: 20px;">The AI was...</div>
+            <div id="revealAIName" style="font-size: 48px; font-weight: bold; margin: 20px 0; color: #d32f2f; animation: aiNamePulse 1.5s ease-in-out;">🤖 LOADING...</div>
+            <div id="revealOutcome" class="reveal-outcome" style="font-size: 32px; margin-top: 30px; font-weight: bold;"></div>
+            <div id="revealStats" style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 10px; text-align: left;"></div>
+            <button onclick="closeReveal()" style="margin-top: 30px; padding: 15px 40px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 25px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s;">Continue</button>
+        </div>
+    </div>
+    
     <!-- Survey Modal -->
     <div id="surveyModal">
         <div class="survey-content">
             <div id="surveyForm">
                 <h2>📊 End of Game Survey</h2>
                 
-                <div class="survey-question">
-                    <label for="aiGuess">Who do you think was the AI?</label>
-                    <select id="aiGuess">
-                        <option value="">Select a player...</option>
-                    </select>
+                <!-- AI Player Name Display (NOT a question) -->
+                <div id="surveyAIInfo" style="display: none; background: #ffebee; border: 2px solid #f44336; border-radius: 8px; padding: 12px; margin-bottom: 20px; text-align: center; font-weight: 600; color: #c62828;">
+                    The AI in this round was: Loading...
                 </div>
                 
                 <div class="survey-question">
@@ -1075,9 +1123,14 @@
                             type: "manager"
                         });
                         gameOverMessageShown = true;
+                        
+                        // Show dramatic reveal modal after a short delay
+                        setTimeout(() => {
+                            showGameOverReveal(data);
+                        }, 2000);
                     }
                     
-                    // Issue 2: Show survey button for ALL human players (not auto-popup)
+                    // Show survey button for ALL human players (not auto-popup)
                     if (!isAI) {
                         showSurveyButton();
                     }
@@ -1362,6 +1415,50 @@
             });
         }
         
+        function showGameOverReveal(data) {
+            // Get AI player name using reliable backend endpoint
+            fetch('/get_ai_player_name', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({session_id: sessionId})
+            })
+            .then(r => r.json())
+            .then(aiData => {
+                // Get the actual AI player name from backend
+                const aiPlayerName = aiData.ai_name || 'Unknown';
+                
+                // Determine winner
+                const humansWon = data.game_over_message && data.game_over_message.includes('Humans');
+                const outcomeClass = humansWon ? 'humans-win' : 'ai-wins';
+                const outcomeText = humansWon ? '🎉 HUMANS WIN! 🎉' : '🤖 AI WINS! 🤖';
+                
+                // Build stats - show only eliminations count
+                let statsHTML = '<div style="font-size: 16px; color: #666; margin-top: 10px;">';
+                statsHTML += '<div><strong>Players Eliminated:</strong> ' + 
+                            (allPlayers.length - (data.remaining_players ? data.remaining_players.length : allPlayers.length)) + '</div>';
+                statsHTML += '</div>';
+                
+                // Show reveal modal
+                document.getElementById('revealAIName').textContent = `🤖 ${aiPlayerName} 🤖`;
+                document.getElementById('revealOutcome').className = `reveal-outcome ${outcomeClass}`;
+                document.getElementById('revealOutcome').textContent = outcomeText;
+                document.getElementById('revealStats').innerHTML = statsHTML;
+                document.getElementById('gameOverReveal').classList.add('show');
+            })
+            .catch(err => {
+                console.error('[Reveal] Error:', err);
+                // Show generic reveal
+                document.getElementById('revealAIName').textContent = '🤖 AI Player 🤖';
+                document.getElementById('revealOutcome').textContent = 'Game Over!';
+                document.getElementById('revealStats').innerHTML = '';
+                document.getElementById('gameOverReveal').classList.add('show');
+            });
+        }
+        
+        function closeReveal() {
+            document.getElementById('gameOverReveal').classList.remove('show');
+        }
+        
         function showSurveyButton() {
             if (surveyShown) return; // Don't show if already submitted
             
@@ -1380,27 +1477,22 @@
                 return;
             }
             
-            // Load player options for survey
-            fetch('/get_survey_options', {
+            // Fetch AI player name for survey header
+            fetch('/get_ai_player_name', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({session_id: sessionId})
             })
             .then(r => r.json())
-            .then(data => {
-                if (data.error) {
-                    console.error('[Survey] Error loading options:', data.error);
-                    return;
+            .then(aiData => {
+                // Display AI player name at top of survey
+                const aiInfo = document.getElementById('surveyAIInfo');
+                if (aiData.ai_name) {
+                    aiInfo.textContent = `The AI in this round was: ${aiData.ai_name}`;
+                    aiInfo.style.display = 'block';
+                } else {
+                    aiInfo.style.display = 'none';
                 }
-                
-                const select = document.getElementById('aiGuess');
-                select.innerHTML = '<option value="">Select a player...</option>';
-                data.players.forEach(name => {
-                    const option = document.createElement('option');
-                    option.value = name;
-                    option.textContent = name;
-                    select.appendChild(option);
-                });
                 
                 // Show modal
                 document.getElementById('surveyModal').classList.add('show');
@@ -1445,15 +1537,8 @@
         }
         
         function submitSurvey() {
-            const guessedAI = document.getElementById('aiGuess').value;
             const suspicionReason = document.getElementById('suspicionReason').value.trim();
             const notes = document.getElementById('surveyNotes').value.trim();
-            
-            // Validation - AI guess required
-            if (!guessedAI) {
-                alert('Please select who you think was the AI');
-                return;
-            }
             
             // Validation - all 4 rating fields required
             if (!surveyRatings.confidence) {
@@ -1474,7 +1559,6 @@
             }
             
             console.log('[Survey] Submitting:', {
-                guessedAI, 
                 ratings: surveyRatings,
                 suspicionReason,
                 notes
@@ -1487,7 +1571,6 @@
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     session_id: sessionId,
-                    guessed_ai: guessedAI,
                     confidence: surveyRatings.confidence,
                     human_likeness: surveyRatings.human_likeness,
                     timing: surveyRatings.timing,

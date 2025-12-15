@@ -147,8 +147,19 @@ def run_phase(players, voting_players, optional_votes_players, public_chat_file,
 def run_daytime(players, daytime_minutes, anonymous_voting=False):
     """Run discussion phase where all players can communicate and vote"""
     (game_dir / PHASE_STATUS_FILE).write_text(DAYTIME)
-    print(colored(DAYTIME_START_MESSAGE_FORMAT.format(daytime_minutes), DAYTIME_COLOR))
-    game_manager_announcement(DAYTIME_START_MESSAGE_FORMAT.format(daytime_minutes))
+    
+    # Build daytime start message
+    message = DAYTIME_START_MESSAGE_FORMAT.format(daytime_minutes)
+    
+    # Add conversation topic if available (playful format)
+    topic_file = game_dir / CONVERSATION_TOPIC_FILE
+    if topic_file.exists():
+        topic = topic_file.read_text(encoding="utf-8", errors="ignore").strip()
+        if topic:
+            message += f"\n\nFeel free to chat about: {topic}\n(or whatever else comes up!)"
+    
+    print(colored(message.replace("\\n", "\n"), DAYTIME_COLOR))
+    game_manager_announcement(message)
     eliminated = run_phase(players, players, players, game_dir / PUBLIC_DAYTIME_CHAT_FILE,
               minutes_to_seconds(daytime_minutes), DAYTIME, anonymous_voting)
     return eliminated

@@ -34,25 +34,30 @@ class LLMPlayer(ABC):
         chat_room_open_time = (self.game_dir / GAME_START_TIME_FILE).read_text().strip()
         if chat_room_open_time:  # if the game has started, the file isn't empty
             system_info += f"The game's chat room was open at [{chat_room_open_time}].\n"
+        
+        # Add conversation topic context if available (soft, non-directive)
+        from game_constants import CONVERSATION_TOPIC_FILE
+        topic_file = self.game_dir / CONVERSATION_TOPIC_FILE
+        if topic_file.exists():
+            topic = topic_file.read_text().strip()
+            if topic:
+                system_info += f"\nThe current conversation topic is: {topic}. "
+                system_info += "You don't need to stick to it strictly — people may drift naturally.\n"
         if attention_to_not_repeat:
-            # Show recent previous messages to prevent repetition
+            # Show only AI's own recent messages (not full chat history - that's in the prompt)
             previous_messages = (self.game_dir / PERSONAL_CHAT_FILE_FORMAT.format(self.name)
                                  ).read_text().splitlines()
             if previous_messages:
-                system_info += "\n--- YOUR RECENT MESSAGES (for reference, to avoid repeating) ---\n"
-                # Show only last 5 messages to keep context manageable
-                for message in previous_messages[-5:]:
+                system_info += "\n--- YOUR LAST FEW MESSAGES (for reference) ---\n"
+                # Show only last 3 messages to keep it minimal
+                for message in previous_messages[-3:]:
                     matcher = re.match(MESSAGE_PARSING_PATTERN, message)
                     if not matcher:
                         continue
                     message_content = matcher.group(5)  # depends on MESSAGE_PARSING_PATTERN
                     system_info += f"  • \"{message_content}\"\n"
                 
-                system_info += "\nIMPORTANT REMINDERS:\n"
-                system_info += "1. Don't repeat the same idea or argument from your previous messages above\n"
-                system_info += "2. If someone asks you personal questions (age, location, studies), ANSWER them directly using your identity\n"
-                system_info += "3. Keep responses casual and natural - avoid formal or robotic language\n"
-                system_info += "4. Vary your reactions - don't use the same phrases repeatedly\n"
+                system_info += "\nReminders: Don't repeat phrases. If asked a question, answer it.\n"
         if only_special_tokens:
             system_info += f"You can ONLY respond with one of two possible outputs:\n" \
                            f"{self.pass_turn_token} - indicating your character in the game " \
@@ -71,6 +76,13 @@ class LLMPlayer(ABC):
     @abstractmethod
     def generate_message(self, message_history):
         raise NotImplementedError()
+    
+    def trim_message_if_too_long(self, message, max_words=10):
+        """Silent backstop: trim message if it exceeds max_words"""
+        words = message.split()
+        if len(words) > max_words:
+            return " ".join(words[:max_words])
+        return message
 
     def interpret_scheduling_decision(self, decision):
         if not decision:

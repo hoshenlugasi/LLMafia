@@ -1,0 +1,6 @@
+[15:14:35] Game-Manager: Now it's Discussion Time for 2.0 minutes. Everyone can communicate. Try to identify who the AI is!
+[15:16:35] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[15:16:59] Game-Manager: Sidney was eliminated. They were: Human
+[15:16:59] Game-Manager: Now it's Discussion Time for 2.0 minutes. Everyone can communicate. Try to identify who the AI is!
+[15:18:59] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[15:19:36] Game-Manager: Jackie was eliminated. They were: AI

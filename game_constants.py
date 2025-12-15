@@ -22,6 +22,7 @@ REAL_NAMES_FILE = "real_names.txt"  # mapping of real names to code names
 PHASE_STATUS_FILE = "phase_status.txt"
 WHO_WINS_FILE = "who_wins.txt"
 GAME_START_TIME_FILE = "game_start_time.txt"
+CONVERSATION_TOPIC_FILE = "conversation_topic.txt"  # Optional conversation topic
 PUBLIC_MANAGER_CHAT_FILE = "public_manager_chat.txt"
 PUBLIC_DAYTIME_CHAT_FILE = "public_daytime_chat.txt"
 ALL_MESSAGES_FILE = "all_messages.txt"
@@ -67,8 +68,9 @@ REAL_NAME_CODENAME_DELIMITER = ": "  # <real name>: <codename>
 
 # game constants
 DAYTIME_START_PREFIX = "Now it's Discussion Time"  # used for analysis
-DAYTIME_START_MESSAGE_FORMAT = DAYTIME_START_PREFIX + " for {} minutes. " \
-                               "Everyone can communicate. Try to identify who the AI is!"
+DAYTIME_START_MESSAGE_FORMAT = "🎮 Welcome! Let's play 🕵️\n\n" \
+                               "You have {} minutes to chat.\n" \
+                               "One of you is an AI — can you find them? 👀"
 VOTING_TIME_MESSAGE_FORMAT = "Discussion phase has ended, now it's time to vote! " \
                              "Who do you think is the AI? Waiting for all players to vote..."
 CUTTING_TO_VOTE_MESSAGE = "Only two players remain - cutting straight to voting!"

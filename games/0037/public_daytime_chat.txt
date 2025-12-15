@@ -1,0 +1,20 @@
+[17:15:57] Emerson: Hi
+[17:16:00] Noah: hey
+[17:16:11] Ariel: How are you?
+[17:16:14] Noah: good, you
+[17:16:19] Emerson: great!
+[17:16:26] Emerson: where are you from?
+[17:16:28] Noah: israel
+[17:16:33] Ariel: me too
+[17:16:40] Ariel: where in israel?
+[17:16:44] Noah: tel aviv, you
+[17:16:50] Ariel: jerusalem
+[17:17:04] Ariel: where are you working
+[17:17:10] Ariel: which company
+[17:17:10] Noah: studying cs, not working yet
+[17:17:17] Emerson: ahh great!
+[17:17:20] Emerson: me too
+[17:17:28] Noah: same here, just uni for now
+[17:17:28] Emerson: very cool
+[17:17:35] Noah: yeah, unis busy but chill
+[17:17:46] Ariel: chill? no

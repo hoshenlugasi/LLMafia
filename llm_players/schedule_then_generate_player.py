@@ -51,7 +51,10 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
                 self.logger.log("prompt in generate_message", prompt)
                 message = self.llm.generate(
                     prompt, False, self.get_system_info_message(attention_to_not_repeat=True))
-                message = make_more_human_like(message)
+                # Silent backstop: trim if too long (10 words max)
+                message = self.trim_message_if_too_long(message, max_words=10)
+                # Pass message_history for smart capitalization matching
+                message = make_more_human_like(message, message_history)
                 return message
             finally:
                 # Always unlock, even if an error occurs
@@ -61,54 +64,146 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
             return ""
 
     def talkative_scheduling_prompt_modifier(self, message_history):
-        # Social Turing Test: no nighttime phase
+        # Social Turing Test: soft speaking frequency boundaries
         if not message_history:
-            return TALKATIVE_PROMPT
+            return "Feel free to speak up naturally when you have something to say."
+        
         all_players = (self.game_dir / REMAINING_PLAYERS_FILE).read_text().splitlines()
         players_counts = {player: 0 for player in all_players}
+        
         for message in message_history[::-1]:
-            if f"] {GAME_MANAGER_NAME}: " in message and "voted for" in message:
-                continue
-            elif f"] {GAME_MANAGER_NAME}: " in message and "has ended, now it's time to vote!" in message:
-                break
-            for player in players_counts:
-                if f"] {player}: " in message:
-                    players_counts[player] += 1
+            # Skip vote messages and phase end messages
+            if f"] {GAME_MANAGER_NAME}: " in message:
+                if "voted for" in message:
+                    continue
+                if "has ended" in message:
+                    break
+            
+            # Fix 4: Use regex parsing instead of substring matching
+            matcher = re.match(MESSAGE_PARSING_PATTERN, message)
+            if matcher:
+                speaker = matcher.group(4)
+                if speaker in players_counts:
+                    players_counts[speaker] += 1
+        
         all_player_messages = sum(players_counts.values())
-        if not all_player_messages or players_counts[self.name] / all_player_messages < 1 / len(all_players):
-            return TALKATIVE_PROMPT
-        else:
-            return QUIETER_PROMPT
+        if not all_player_messages:
+            return "Feel free to speak up naturally."
+        
+        my_ratio = players_counts[self.name] / all_player_messages
+        expected_ratio = 1 / len(all_players)
+        
+        # Soft boundaries - not targeting exact 1/N ratio
+        # Slightly tighter boundaries to reduce over-responsiveness
+        if my_ratio < expected_ratio * 0.55:  # Very quiet
+            return "You've been quiet - feel free to participate more if you want."
+        elif my_ratio > expected_ratio * 1.4:  # Very active
+            return "You've been pretty active - let others have space to talk too."
+        else:  # Balanced
+            return "Continue participating naturally as feels right."
 
     def create_scheduling_prompt(self, message_history):
-        # Check if AI is mentioned in recent messages
-        mentioned_recently = False
+        # Improved: targeted social "you" patterns to reduce false positives
+        social_you_patterns = [
+            "and you", "what about you", "how about you", 
+            "you too", "wbu", "you?", "u?"
+        ]
+        
+        mentioned = False
+        asked_question = False
+        
         if message_history:
-            # Check last 3 messages for mentions
-            for message in message_history[-3:]:
-                if self.name.lower() in message.lower():
-                    mentioned_recently = True
-                    break
+            # NEW: Track if AI was recently active in conversation (for follow-up detection)
+            ai_was_recently_active = False
+            for message in message_history[-3:]:  # Check last 3 messages
+                matcher = re.match(MESSAGE_PARSING_PATTERN, message)
+                if matcher:
+                    speaker = matcher.group(4)
+                    if speaker == self.name:
+                        ai_was_recently_active = True
+                        break
+            
+            # Fix 3: Only check last 1-2 messages for recency
+            recent_messages = message_history[-2:]
+            
+            for message in recent_messages:
+                message_lower = message.lower()
+                
+                # Fix 2: Parse and filter by speaker
+                matcher = re.match(MESSAGE_PARSING_PATTERN, message)
+                if matcher:
+                    speaker = matcher.group(4)
+                    # Skip messages from Game Manager or self
+                    if speaker in {GAME_MANAGER_NAME, self.name}:
+                        continue
+                
+                # Direct mention by name
+                if self.name.lower() in message_lower:
+                    mentioned = True
+                    # Check for question words if mentioned
+                    question_words = ["where", "what", "who", "how", "why", "when", "which"]
+                    for qword in question_words:
+                        if qword in message_lower:
+                            asked_question = True
+                            break
+                
+                # Fix 1: Improved "you" question detection - only social patterns
+                if "?" in message_lower:
+                    is_direct_you_ping = (
+                        any(p in message_lower for p in social_you_patterns)
+                        or message_lower.strip().endswith("you?")
+                        or message_lower.strip().endswith("u?")
+                    )
+                    if is_direct_you_ping:
+                        asked_question = True
+            
+            # NEW: Follow-up question detection when AI was recently active
+            if ai_was_recently_active and recent_messages:
+                last_message = recent_messages[-1]
+                last_message_lower = last_message.lower()
+                
+                # Parse speaker
+                matcher = re.match(MESSAGE_PARSING_PATTERN, last_message)
+                if matcher:
+                    speaker = matcher.group(4)
+                    # Only check if it's from another player (not GM or self)
+                    if speaker not in {GAME_MANAGER_NAME, self.name}:
+                        # Check if it's a question (with or without "?")
+                        is_question = (
+                            "?" in last_message_lower or
+                            any(last_message_lower.strip().startswith(qw) for qw in 
+                                ["where", "what", "when", "why", "who", "how", "which"]) or
+                            last_message_lower.strip() in ["really", "really?", "why", "how come"]
+                        )
+                        
+                        # Check for follow-up patterns
+                        is_follow_up = any(
+                            last_message_lower.strip().startswith(p) for p in 
+                            ["and ", "so ", "but ", "then ", "really", "why", "how come"]
+                        )
+                        
+                        # If it's a question or follow-up after AI spoke, treat as directed to AI
+                        if is_question or is_follow_up:
+                            asked_question = True
+                            self.logger.log("follow_up_detected", 
+                                f"Detected follow-up: ai_active={ai_was_recently_active}, "
+                                f"is_question={is_question}, is_follow_up={is_follow_up}")
         
-        task = f"Do you want to send a message to the group chat now, or do you prefer to wait " \
-               f"for now and see what messages others will send? "
+        task = f"Do you want to send a message now, or wait and see what others say? "
         
-        if mentioned_recently:
-            task += f"NOTE: Someone just mentioned your name ({self.name}) in the recent messages - " \
-                    f"it would be natural to respond when directly addressed! "
+        # Soft nudges, not hard requirements
+        if asked_question:
+            task += f"Note: Someone may be asking you something. Consider responding if it feels natural. "
+        elif mentioned:
+            task += f"Note: Your name was mentioned recently. "
         
-        task += f"Remember to choose to send a message only if your contribution to the " \
-                f"discussion in the current time will be meaningful enough. " \
-                f"{self.talkative_scheduling_prompt_modifier(message_history).strip()} " \
-                f"Reply only with `{self.use_turn_token}` if you want to send a message now, " \
-                f"or only with `{self.pass_turn_token}` if you want to wait for now, " \
-                f"based on your decision! "
+        task += f"{self.talkative_scheduling_prompt_modifier(message_history).strip()} "
+        task += f"Reply only with `{self.use_turn_token}` to send now, " \
+                f"or `{self.pass_turn_token}` to wait."
+        
         return turn_task_into_prompt(task, message_history)
 
     def create_generation_prompt(self, message_history):
-        task = f"Add a very short message to the game's chat. " \
-               f"Be specific and keep it relevant to the current situation. " \
-               f"Your message should only be one short sentence! " \
-               f"Match your style to the other players' message style, " \
-               f"with more emphasis on more recent messages."
+        task = "Add a natural message to the chat based on the current conversation. " \
+               "You may continue the topic or respond to a question if relevant."
         return turn_task_into_prompt(task, message_history)

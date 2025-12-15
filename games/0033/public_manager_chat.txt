@@ -1,0 +1,6 @@
+[11:30:53] Game-Manager: Now it's Discussion Time for 2.0 minutes. Everyone can communicate. Try to identify who the AI is!
+[11:32:53] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[11:33:05] Game-Manager: Casey was eliminated. They were: Human
+[11:33:05] Game-Manager: Now it's Discussion Time for 2.0 minutes. Everyone can communicate. Try to identify who the AI is!
+[11:35:05] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[11:35:53] Game-Manager: Angel was eliminated. They were: Human

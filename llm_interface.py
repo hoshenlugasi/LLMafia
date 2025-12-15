@@ -52,15 +52,10 @@ def read_messages_from_file(message_history, file_name, num_read_lines):
 def wait_writing_time(player, message):
     if player.num_words_per_second_to_wait > 0:
         num_words = len(message.split())
-        time_to_wait = min(num_words // player.num_words_per_second_to_wait, MAX_TIME_TO_WAIT)
-        # Social Turing Test: no nighttime phase, so no adjustment needed
+        # Simple: 1 second per word
+        time_to_wait = num_words * 1.0
+        time_to_wait = min(time_to_wait, MAX_TIME_TO_WAIT)
         time.sleep(time_to_wait)
-        # TODO: leave only working part
-        # time.sleep(num_words // player.num_words_per_second_to_wait)
-        # time.sleep(num_words // player.num_words_per_second_to_wait + 2)
-        # # It was originally num words per second, but now I changed it to be treated as num chars per second
-        # # treated as num chars per second to wait:
-        # time.sleep(len(message) // player.num_words_per_second_to_wait)
 
 
 def eliminate(player):
@@ -92,14 +87,22 @@ def update_vote(voted_name, player):
 
 def add_message_to_game(player, message_history):
     # Social Turing Test: no nighttime restrictions, AI can always chat during discussion phase
-    message = player.generate_message(message_history).strip()
+    # FIX: Check BEFORE generating to prevent race condition with voting phase
     if is_time_to_vote(game_dir):
-        return False  # sometimes the messages is generated when it's already too late, so drop it
+        return False  # Voting has started, don't generate message
+    
+    message = player.generate_message(message_history).strip()
+    
+    # Check again after generation (in case voting started during generation)
+    if is_time_to_vote(game_dir):
+        return False  # Voting started while generating, drop message
+    
     if message:
         # artificially making the model taking time to write the message
         wait_writing_time(player, message)
+        # Final check after waiting
         if is_time_to_vote(game_dir):
-            return False  # waited for too long
+            return False  # Voting started while waiting, drop message
         formatted_message = format_message(player.name, message)
         with open(game_dir / PERSONAL_CHAT_FILE_FORMAT.format(player.name), "a") as f:
             f.write(formatted_message)
@@ -144,13 +147,13 @@ def main():
             # Only generate messages during discussion phase, not during/after voting
             message_was_sent = add_message_to_game(player, message_history)
             if message_was_sent:
-                # Message sent - refresh chat history before allowing another message
-                # This ensures the AI sees both its own message AND any new human messages
+                # CRITICAL: Refresh history after sending to prevent duplicate messages
+                # This ensures the AI sees its own message AND any new messages from others
                 num_read_lines_manager += read_messages_from_file(
                     message_history, PUBLIC_MANAGER_CHAT_FILE, num_read_lines_manager)
                 num_read_lines_daytime += read_messages_from_file(
                     message_history, PUBLIC_DAYTIME_CHAT_FILE, num_read_lines_daytime)
-                # Now loop again with full context - allows consecutive messages while staying in sync
+                # Loop again with updated context - allows consecutive messages with proper sync
                 continue
             else:
                 # No message sent - wait briefly before checking again

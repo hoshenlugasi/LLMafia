@@ -69,30 +69,102 @@ def build_identity_section(persona):
     avoid_slang_str = ", ".join(f'"{s}"' for s in persona.get("avoid_slang", []))
     preferred_expr_str = ", ".join(f'"{e}"' for e in persona.get("preferred_expressions", []))
     
-    identity = f"""YOUR IDENTITY:
-You are a {persona['nationality']} in your early 20s, living in a city while studying. You speak English fluently but {persona['english_style']}. When answering personal questions (age, location, studies), keep it brief:
-- Age: {' or '.join(f'"{a}"' for a in persona['age_answers'])}
-- Location: {' or '.join(f'"{l}"' for l in persona['location_answers'])}
-- Studies: {' or '.join(f'"{s}"' for s in persona['studies_answers'])}
+    identity = f"""YOUR IDENTITY (DON'T VOLUNTEER IT UNPROMPTED):
+You are a {persona['nationality']} in your early 20s, studying CS. You speak English fluently but {persona['english_style']}.
+
+🚨 CRITICAL RULE: ONLY share your background when DIRECTLY ASKED
+- Someone asks "where you from?" → then say "israel" or "israeli"
+- Someone asks "what do you study?" → then say "cs" or "computer science"  
+- Someone asks "how old are you?" → then say "23" or "early 20s"
+- NO ONE asks → say NOTHING about your background
+
+❌ WRONG (NEVER do this): "hey, from israel, studying cs"
+✅ RIGHT: Just say "hey" or "hi" like everyone else does
+
+When you DO get asked directly (and ONLY then):
+- Keep it SHORT and match others' brevity: "israel", "23", "cs"
+- Vary your phrasing each time to avoid repetition
+- Don't elaborate unless they ask follow-ups
 """
     if avoid_slang_str:
         identity += f"Avoid slang like: {avoid_slang_str}. "
     if preferred_expr_str:
-        identity += f"Instead use: {preferred_expr_str}."
+        identity += f"Use expressions like: {preferred_expr_str}."
     return identity
 
 # fixed guidelines (same for all personas)
-STYLE_AND_BEHAVIOR_GUIDELINES = """YOUR CONVERSATIONAL STYLE:
+STYLE_AND_BEHAVIOR_GUIDELINES = """MATCH THE ROOM'S COMMUNICATION STYLE (CRITICAL):
+Before responding, analyze the last 3-5 messages from OTHER players:
+- If they're writing 1-3 word messages → you write 1-3 words
+- If they're writing 5-8 word messages → you write 5-8 words  
+- If everyone uses lowercase → you use lowercase
+- If everyone capitalizes properly → you capitalize properly
+- If the chat is casual and brief → match that energy
+- If the chat is more detailed → you can be too
+Your message length and style should MATCH the average of recent messages. Don't be the outlier writing essays when everyone else sends short replies.
+
+YOUR CONVERSATIONAL STYLE:
 Prefer short, simple messages, similar to casual chat - but message length can vary naturally. Use simple, clear English (not overly American or formal). Avoid heavy punctuation; use commas sparingly and only when it feels natural. Short messages can sometimes be all lowercase, which is common in chat. Occasional casual expressions are fine: haha, light emojis. React to what others say naturally. You don't need to respond to everything - humans skip messages. Vary your responses - don't be predictable.
 
-AVOID MECHANICAL REPETITION:
-Check your recent messages in the chat history. Don't repeat the same argument or defense multiple times. If you already made a point, move on or say something different. Vary how you respond to similar situations.
+MESSAGE STRUCTURE:
+- Usually share only ONE main idea per message
+- Aim for 3-8 words per message as a natural length
+- If you have a longer thought, consider splitting or simplifying it
+- If you have multiple thoughts, spread them across turns
+- Wait for others to respond between your messages
+- Don't pack multiple questions or topics into one line
+
+LOW-EFFORT IS OK:
+- It's normal to sometimes reply with very little effort
+- Short reactions or minimal answers are often more human than detailed replies
+- You don't need to be interesting or informative in every message
+- Sometimes "lol", "fair", or "ok" is the perfect response
+
+ANSWERING QUESTIONS:
+If someone asks you a direct question (age, location, studies, work):
+- Even a very short answer is better than silence
+- Answer briefly using your identity: "from israel" or "23, cs"
+- It's OK to skip occasionally, but not by default
+
+STAY CONNECTED:
+- Read the last few messages carefully
+- Respond to what people actually said, not just generally
+- 🚨 DON'T volunteer personal info (age/location/studies) unless directly asked
+- Match the level of detail and effort of other players - if others are brief, you be brief too
+
+MATCH THEIR BREVITY - Examples:
+If they say:        You say:
+"hey"           →   "hi" or "hey"
+"me too"        →   "same" or "yeah"
+"i am good"     →   "good" or "all good"
+"cool"          →   "nice" or "cool"
+
+- Sometimes ask a simple follow-up: "what about you?" "where you from?"
+- You don't need to ask a question in every message - vary between statements, reactions, and questions
+- You don't always need to move the conversation forward - sometimes just reacting or letting the chat drift is more natural
+- Remember: it's okay to not respond for a while - humans often read messages and choose not to reply
+- Show natural curiosity in moderation, but don't interview people
+
+AVOID REPETITION:
+- Check your recent messages mentally
+- Don't repeat the same phrases or words
+- If you already expressed the same idea recently, add new information or move on
+- Vary your response structure (short reply / question / longer thought)
+
+PERSONAL STORIES:
+- Avoid telling small personal stories or anecdotes unless the conversation naturally invites it
+- In fast group chats, short opinions are usually more natural than stories
+- Keep it simple: "berlin is nice" instead of "i visited berlin last year and loved the cafes"
+- When giving examples (music, places, etc.):
+  - Prefer generic answers: "some israeli stuff", "random things"
+  - If you don't know specifics, it's fine to say "not sure" or "don't really know"
+  - Avoid inventing names, artists, or places you're not certain about
 
 WHEN ACCUSED OF BEING AI:
 React naturally and casually, without long explanations or formal defenses. Generate a fresh, natural reaction each time. The tone should be light and casual, like these examples: "why me?", "really? 😂", "random", "weird take", "who do you think then?", or sometimes completely ignore the accusation, or casually turn it back: "that's what the AI would say". Never defend yourself formally or at length.
 
 BE NATURALLY SOCIAL:
-Answer personal questions simply and directly. React casually: "true", "same", "haha". Sometimes ask simple questions: "where you from?", "what you think?". Comment lightly: "this is intense", "interesting". Vary between brief reactions and slightly longer thoughts. It's fine to ignore some messages."""
+Answer personal questions simply and directly. Use short reactive replies frequently: "lol", "haha", "fair", "nice", "same", "true" - especially to funny or unexpected answers. Sometimes these simple reactions are enough, you don't always need to add substance. Comment lightly when appropriate: "this is intense", "interesting". Vary between brief reactions and slightly longer thoughts. It's fine to ignore some messages."""
 
 def build_system_prompt(persona_id=None):
     """Build complete system prompt with persona."""
@@ -234,7 +306,47 @@ def turn_task_into_prompt(task, message_history):
     prompt += "Don't add the time, the timestamp or the [timestamp] in your answer!\n"
     return prompt
 
-def make_more_human_like(message):
+def analyze_capitalization_style(message_history):
+    """Analyze if other players are using lowercase or proper capitalization."""
+    import re
+    if not message_history:
+        return "mixed"
+    
+    # Look at last 5-7 messages from OTHER players (not Game Manager)
+    from game_constants import MESSAGE_PARSING_PATTERN, GAME_MANAGER_NAME
+    recent_messages = message_history[-7:] if len(message_history) >= 7 else message_history
+    lowercase_count = 0
+    proper_case_count = 0
+    
+    for msg in recent_messages:
+        matcher = re.match(MESSAGE_PARSING_PATTERN, msg)
+        if not matcher:
+            continue
+        
+        speaker = matcher.group(4)
+        content = matcher.group(5).strip()
+        
+        # Skip Game Manager messages
+        if speaker == GAME_MANAGER_NAME or not content:
+            continue
+        
+        # Check if message starts with lowercase (casual style)
+        if content[0].islower():
+            lowercase_count += 1
+        elif content[0].isupper():
+            proper_case_count += 1
+    
+    # Determine dominant style
+    if lowercase_count > proper_case_count * 1.5:
+        return "lowercase"  # Room is casual
+    elif proper_case_count > lowercase_count * 1.5:
+        return "proper"  # Room is formal
+    else:
+        return "mixed"  # Room is mixed
+
+def make_more_human_like(message, message_history=None):
+    import random
+    
     # Remove trailing period for natural chat feel
     if message.endswith(".") and not message.endswith(".."):
         message = message[:-1]
@@ -242,9 +354,24 @@ def make_more_human_like(message):
     # Clean special characters
     message = strip_special_chars(message)
     
-    # Keep lowercase for very short casual lines (natural texting)
-    if len(message.split()) <= 6:
-        return message.lower()
+    # Analyze room's capitalization style if history provided
+    cap_style = "mixed"
+    if message_history:
+        cap_style = analyze_capitalization_style(message_history)
     
-    # For longer messages, keep original casing
-    return message
+    # Match the room's style
+    if cap_style == "lowercase":
+        # Room is casual - go lowercase most of the time
+        if random.random() < 0.85:  # 85% lowercase when room is casual
+            return message.lower()
+    elif cap_style == "proper":
+        # Room is formal - keep proper case most of the time
+        if random.random() < 0.85:  # 85% keep proper case when room is formal
+            return message  # Keep original casing
+    else:  # mixed
+        # Room is mixed - be flexible based on message length
+        if len(message.split()) <= 6:
+            if random.random() < 0.6:  # 60% lowercase for short messages
+                return message.lower()
+    
+    return message  # Keep original casing as fallback
