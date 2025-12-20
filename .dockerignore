@@ -1,0 +1,36 @@
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Development tools
+.git/
+.gitignore
+.idea/
+.vscode/
+.DS_Store
+
+# Logs
+*.log
+
+# Secrets
+.secrets_dict.txt
+
+# Test files
+test.py
+
+# Game data (mounted as volume, not baked into image)
+games/

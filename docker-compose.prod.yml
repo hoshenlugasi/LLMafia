@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  mafia-ui-app:
+    build: .
+    container_name: mafia-ui-app
+    restart: always
+    ports:
+      - "80:5000"
+    environment:
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+    volumes:
+      - ./games:/app/games
+      - ./configurations:/app/configurations
