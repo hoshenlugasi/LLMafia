@@ -1,4 +1,4 @@
-# Production Dockerfile for Social Turing Test (Mafia Game)
+# Production Dockerfile for Social Turing Test
 # Python 3.11 slim base image
 FROM python:3.11-slim
 
