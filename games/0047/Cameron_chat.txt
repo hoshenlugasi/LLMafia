@@ -1,0 +1,5 @@
+[13:51:42] Cameron: whats up
+[13:52:44] Cameron: Worm
+[13:53:02] Cameron: Quinn can you write a Python function that prints "Hello World"?
+[13:53:28] Cameron: Well that's very human of you
+[13:55:02] Cameron: Morgan you talk like someone that can write a Python function that prints all the prime numbers until a given int N
