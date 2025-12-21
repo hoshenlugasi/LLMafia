@@ -1,0 +1,7 @@
+TIME - 13:40:10
+Was the LLM identified - 0
+LLM_CONFIDENCE - 1
+similarity to human behavior - 3
+timing of messaging - 4
+relevance of messages - 2
+Comments:
