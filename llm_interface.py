@@ -106,8 +106,8 @@ def add_message_to_game(player, message_history):
         formatted_message = format_message(player.name, message)
         with open(game_dir / PERSONAL_CHAT_FILE_FORMAT.format(player.name), "a") as f:
             f.write(formatted_message)
-        # Immediately update message_history to prevent duplicate messages
-        message_history.append(formatted_message)
+        # NOTE: Do NOT append to message_history here - it will be read from file in main loop
+        # to avoid duplication
         print(colored(MODEL_CHOSE_TO_USE_TURN_LOG, OPERATOR_COLOR))
         return True  # message was sent
     else:
@@ -123,47 +123,109 @@ def end_game(eliminated: bool):
 def main():
     player = get_llm_player()
     print(colored(LLM_PLAYER_LOADED_MESSAGE, OPERATOR_COLOR))
+    player.logger.log("AGENT_LIFECYCLE", "Agent initialized, waiting for players to join")
+    
     while not all_players_joined(game_dir):
         continue
+    
     print(colored(ALL_PLAYERS_JOINED_MESSAGE, OPERATOR_COLOR))
+    player.logger.log("AGENT_LIFECYCLE", "All players joined, game starting")
+    
     message_history = []
     num_read_lines_manager = num_read_lines_daytime = 0
     eliminated = False
-    while not is_game_over(game_dir):
-        num_read_lines_manager += read_messages_from_file(
-            message_history, PUBLIC_MANAGER_CHAT_FILE, num_read_lines_manager)
-        # Social Turing Test: Only daytime chat, no nighttime
-        num_read_lines_daytime += read_messages_from_file(
-            message_history, PUBLIC_DAYTIME_CHAT_FILE, num_read_lines_daytime)
-        if is_voted_out(player.name, game_dir):
-            eliminate(player)
-            eliminated = True
-            break
-        if is_time_to_vote(game_dir):
-            # AI does not vote - simply wait silently until voting phase ends
-            while is_time_to_vote(game_dir):
-                continue  # wait for voting time to end when all human players have voted
-        else:
-            # Only generate messages during discussion phase, not during/after voting
-            message_was_sent = add_message_to_game(player, message_history)
-            if message_was_sent:
-                # CRITICAL: Refresh history after sending to prevent duplicate messages
-                # This ensures the AI sees its own message AND any new messages from others
-                num_read_lines_manager += read_messages_from_file(
-                    message_history, PUBLIC_MANAGER_CHAT_FILE, num_read_lines_manager)
-                num_read_lines_daytime += read_messages_from_file(
-                    message_history, PUBLIC_DAYTIME_CHAT_FILE, num_read_lines_daytime)
-                # Loop again with updated context - allows consecutive messages with proper sync
+    iteration_count = 0
+    voting_wait_start = None
+    VOTING_TIMEOUT = 300  # 5 minutes max wait for voting
+    
+    try:
+        while not is_game_over(game_dir):
+            iteration_count += 1
+            player.logger.log("AGENT_HEARTBEAT", f"Loop iteration {iteration_count} at {get_current_timestamp()}")
+            
+            # Read new messages
+            new_manager_lines = read_messages_from_file(
+                message_history, PUBLIC_MANAGER_CHAT_FILE, num_read_lines_manager)
+            new_daytime_lines = read_messages_from_file(
+                message_history, PUBLIC_DAYTIME_CHAT_FILE, num_read_lines_daytime)
+            num_read_lines_manager += new_manager_lines
+            num_read_lines_daytime += new_daytime_lines
+            
+            if new_manager_lines > 0 or new_daytime_lines > 0:
+                player.logger.log("AGENT_STATUS", 
+                    f"Read {new_manager_lines} manager messages, {new_daytime_lines} daytime messages. "
+                    f"Total history: {len(message_history)} lines")
+            
+            # Check elimination
+            if is_voted_out(player.name, game_dir):
+                player.logger.log("AGENT_LIFECYCLE", "Agent was voted out")
+                eliminate(player)
+                eliminated = True
+                break
+            
+            # Handle voting phase
+            if is_time_to_vote(game_dir):
+                if voting_wait_start is None:
+                    voting_wait_start = time.time()
+                    player.logger.log("AGENT_STATUS", "Entering voting wait loop")
+                
+                # Check timeout
+                if time.time() - voting_wait_start > VOTING_TIMEOUT:
+                    player.logger.log("AGENT_ERROR", 
+                        f"Voting timeout exceeded ({VOTING_TIMEOUT}s) - breaking out")
+                    break
+                
+                # Wait for voting to end
+                time.sleep(0.5)
                 continue
             else:
-                # No message sent - wait briefly before checking again
-                time.sleep(0.5)
+                # Reset voting wait tracker when not in voting phase
+                if voting_wait_start is not None:
+                    player.logger.log("AGENT_STATUS", "Exited voting phase")
+                    voting_wait_start = None
+                
+                # Try to generate and send message
+                player.logger.log("AGENT_STATUS", "Attempting to generate message")
+                try:
+                    message_was_sent = add_message_to_game(player, message_history)
+                    
+                    if message_was_sent:
+                        player.logger.log("AGENT_STATUS", "Message sent successfully, refreshing history")
+                        # Refresh history after sending
+                        new_manager = read_messages_from_file(
+                            message_history, PUBLIC_MANAGER_CHAT_FILE, num_read_lines_manager)
+                        new_daytime = read_messages_from_file(
+                            message_history, PUBLIC_DAYTIME_CHAT_FILE, num_read_lines_daytime)
+                        num_read_lines_manager += new_manager
+                        num_read_lines_daytime += new_daytime
+                        player.logger.log("AGENT_STATUS", 
+                            f"After refresh: {new_manager} manager, {new_daytime} daytime messages")
+                        continue
+                    else:
+                        player.logger.log("AGENT_STATUS", "No message sent (decided to wait)")
+                        time.sleep(0.5)
+                        
+                except Exception as e:
+                    player.logger.log("AGENT_ERROR", f"Exception in add_message_to_game: {str(e)}")
+                    print(colored(f"ERROR: {str(e)}", "red"))
+                    time.sleep(1)  # Brief pause before retrying
+        
+        player.logger.log("AGENT_LIFECYCLE", f"Exited main loop. Game over: {is_game_over(game_dir)}")
+        
+    except Exception as e:
+        player.logger.log("AGENT_FATAL_ERROR", f"Fatal exception in main loop: {str(e)}")
+        print(colored(f"FATAL ERROR: {str(e)}", "red"))
+        import traceback
+        player.logger.log("AGENT_FATAL_ERROR", f"Traceback: {traceback.format_exc()}")
+        raise
     
     # Final check: if game ended but we haven't detected elimination yet, check now
     if not eliminated and is_voted_out(player.name, game_dir):
         eliminated = True
         eliminate(player)
+        player.logger.log("AGENT_LIFECYCLE", "Detected elimination in final check")
     
+    player.logger.log("AGENT_LIFECYCLE", f"Game ended. Eliminated: {eliminated}")
     end_game(eliminated)
 
 

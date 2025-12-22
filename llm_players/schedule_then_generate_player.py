@@ -95,9 +95,9 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
         
         # Soft boundaries - not targeting exact 1/N ratio
         # Slightly tighter boundaries to reduce over-responsiveness
-        if my_ratio < expected_ratio * 0.55:  # Very quiet
+        if my_ratio < expected_ratio:  # Very quiet
             return "You've been quiet - feel free to participate more if you want."
-        elif my_ratio > expected_ratio * 1.4:  # Very active
+        elif my_ratio > expected_ratio:  # Very active
             return "You've been pretty active - let others have space to talk too."
         else:  # Balanced
             return "Continue participating naturally as feels right."
@@ -105,7 +105,7 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
     def create_scheduling_prompt(self, message_history):
         # Improved: targeted social "you" patterns to reduce false positives
         social_you_patterns = [
-            "and you", "what about you", "how about you", 
+            "and you", "what about you", "how about you",
             "you too", "wbu", "you?", "u?"
         ]
         
@@ -195,9 +195,11 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
         if asked_question:
             task += f"Note: Someone may be asking you something. Consider responding if it feels natural. "
         elif mentioned:
-            task += f"Note: Your name was mentioned recently. "
+            task += f"Note: Your name was mentioned recently. Consider responding if it feels natural. "
+        else:
+            # Only add frequency guidance when NOT directly engaged
+            task += f"{self.talkative_scheduling_prompt_modifier(message_history).strip()} "
         
-        task += f"{self.talkative_scheduling_prompt_modifier(message_history).strip()} "
         task += f"Reply only with `{self.use_turn_token}` to send now, " \
                 f"or `{self.pass_turn_token}` to wait."
         

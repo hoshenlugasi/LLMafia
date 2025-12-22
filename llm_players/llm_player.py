@@ -29,8 +29,7 @@ class LLMPlayer(ABC):
         self.llm = LLMWrapper(self.logger, **llm_config)
 
     def get_system_info_message(self, attention_to_not_repeat=False, only_special_tokens=False):
-        system_info = f"Your name is {self.name}. {self.system_prompt}\n" \
-                      f"You were assigned the following role: {self.role}.\n"
+        system_info = f"Your name is {self.name}. {self.system_prompt}\n"
         chat_room_open_time = (self.game_dir / GAME_START_TIME_FILE).read_text().strip()
         if chat_room_open_time:  # if the game has started, the file isn't empty
             system_info += f"The game's chat room was open at [{chat_room_open_time}].\n"
@@ -48,7 +47,7 @@ class LLMPlayer(ABC):
             previous_messages = (self.game_dir / PERSONAL_CHAT_FILE_FORMAT.format(self.name)
                                  ).read_text().splitlines()
             if previous_messages:
-                system_info += "\n--- YOUR LAST FEW MESSAGES (for reference) ---\n"
+                system_info += f"\nFor reference, here are a few of your recent messages:\n"
                 # Show only last 3 messages to keep it minimal
                 for message in previous_messages[-3:]:
                     matcher = re.match(MESSAGE_PARSING_PATTERN, message)
@@ -57,7 +56,7 @@ class LLMPlayer(ABC):
                     message_content = matcher.group(5)  # depends on MESSAGE_PARSING_PATTERN
                     system_info += f"  • \"{message_content}\"\n"
                 
-                system_info += "\nReminders: Don't repeat phrases. If asked a question, answer it.\n"
+                system_info += "\nWhen deciding what to say next, avoid repeating the same wording or reaction.\n"
         if only_special_tokens:
             system_info += f"You can ONLY respond with one of two possible outputs:\n" \
                            f"{self.pass_turn_token} - indicating your character in the game " \
