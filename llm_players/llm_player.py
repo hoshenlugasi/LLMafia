@@ -57,6 +57,13 @@ class LLMPlayer(ABC):
                     system_info += f"  • \"{message_content}\"\n"
                 
                 system_info += "\nWhen deciding what to say next, avoid repeating the same wording or reaction.\n"
+                
+                # Add topic saturation check
+                system_info += "\n⚠️ CRITICAL - TOPIC SATURATION CHECK:\n"
+                system_info += "Look at your recent messages above. Have you mentioned the same topic/excuse/situation multiple times?\n"
+                system_info += "(Examples: being tired, coding, busy, cs deadlines, same location, same explanation)\n"
+                system_info += "→ If YES: DO NOT explain or mention it again. Change topic, deflect, joke, or stay silent.\n"
+                system_info += "Humans don't repeat their story — they move on or ignore follow-ups about it.\n"
         if only_special_tokens:
             system_info += f"You can ONLY respond with one of two possible outputs:\n" \
                            f"{self.pass_turn_token} - indicating your character in the game " \

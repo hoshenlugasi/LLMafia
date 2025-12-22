@@ -113,18 +113,17 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
         asked_question = False
         
         if message_history:
-            # NEW: Track if AI was recently active in conversation (for follow-up detection)
-            ai_was_recently_active = False
-            for message in message_history[-3:]:  # Check last 3 messages
-                matcher = re.match(MESSAGE_PARSING_PATTERN, message)
+            # Track if AI was recently active AND check for legitimate follow-up
+            recent_messages = message_history[-3:]  # Check last 3 messages for context
+            
+            ai_last_message_position = None
+            for i in range(len(recent_messages) - 1, -1, -1):  # Start from most recent
+                matcher = re.match(MESSAGE_PARSING_PATTERN, recent_messages[i])
                 if matcher:
                     speaker = matcher.group(4)
                     if speaker == self.name:
-                        ai_was_recently_active = True
+                        ai_last_message_position = i
                         break
-            
-            # Fix 3: Only check last 1-2 messages for recency
-            recent_messages = message_history[-2:]
             
             for message in recent_messages:
                 message_lower = message.lower()
@@ -157,37 +156,39 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
                     if is_direct_you_ping:
                         asked_question = True
             
-            # NEW: Follow-up question detection when AI was recently active
-            if ai_was_recently_active and recent_messages:
-                last_message = recent_messages[-1]
-                last_message_lower = last_message.lower()
-                
-                # Parse speaker
-                matcher = re.match(MESSAGE_PARSING_PATTERN, last_message)
-                if matcher:
-                    speaker = matcher.group(4)
-                    # Only check if it's from another player (not GM or self)
-                    if speaker not in {GAME_MANAGER_NAME, self.name}:
-                        # Check if it's a question (with or without "?")
-                        is_question = (
-                            "?" in last_message_lower or
-                            any(last_message_lower.strip().startswith(qw) for qw in 
-                                ["where", "what", "when", "why", "who", "how", "which"]) or
-                            last_message_lower.strip() in ["really", "really?", "why", "how come"]
-                        )
-                        
-                        # Check for follow-up patterns
-                        is_follow_up = any(
-                            last_message_lower.strip().startswith(p) for p in 
-                            ["and ", "so ", "but ", "then ", "really", "why", "how come"]
-                        )
-                        
-                        # If it's a question or follow-up after AI spoke, treat as directed to AI
-                        if is_question or is_follow_up:
-                            asked_question = True
-                            self.logger.log("follow_up_detected", 
-                                f"Detected follow-up: ai_active={ai_was_recently_active}, "
-                                f"is_question={is_question}, is_follow_up={is_follow_up}")
+            # NEW: Stricter follow-up question detection
+            # Only trigger if AI spoke in the last 1-2 messages AND there's a legitimate follow-up
+            if ai_last_message_position is not None and recent_messages:
+                # AI must be in the last 2 messages (not 3+ messages ago)
+                if ai_last_message_position >= len(recent_messages) - 2:
+                    last_message = recent_messages[-1]
+                    last_message_lower = last_message.lower()
+                    
+                    # Parse speaker
+                    matcher = re.match(MESSAGE_PARSING_PATTERN, last_message)
+                    if matcher:
+                        speaker = matcher.group(4)
+                        # Only check if it's from another player (not GM or self)
+                        if speaker not in {GAME_MANAGER_NAME, self.name}:
+                            # Check if it's a direct continuation question
+                            is_direct_question = (
+                                "?" in last_message_lower and
+                                any(last_message_lower.strip().startswith(qw) for qw in 
+                                    ["where", "what", "when", "why", "who", "how", "which", "really"])
+                            )
+                            
+                            # Very short follow-ups that are clearly continuing
+                            is_short_followup = last_message_lower.strip() in [
+                                "why", "why?", "really", "really?", "how come", "how come?",
+                                "what", "what?", "where", "where?"
+                            ]
+                            
+                            # Only treat as follow-up if it's clearly asking for more info
+                            if is_direct_question or is_short_followup:
+                                asked_question = True
+                                self.logger.log("follow_up_detected", 
+                                    f"Legitimate follow-up: position={ai_last_message_position}, "
+                                    f"is_direct_question={is_direct_question}, is_short={is_short_followup}")
         
         task = f"Do you want to send a message now, or wait and see what others say? "
         
