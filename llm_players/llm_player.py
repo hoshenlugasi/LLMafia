@@ -28,13 +28,12 @@ class LLMPlayer(ABC):
         self.system_prompt = build_system_prompt(self.persona_id)
         self.llm = LLMWrapper(self.logger, **llm_config)
 
-    def get_system_info_message(self, attention_to_not_repeat=False, only_special_tokens=False):
+    def get_system_info_message(self, only_special_tokens=False):
         system_info = f"Your name is {self.name}. {self.system_prompt}\n"
         chat_room_open_time = (self.game_dir / GAME_START_TIME_FILE).read_text().strip()
-        if chat_room_open_time:  # if the game has started, the file isn't empty
+        if chat_room_open_time:
             system_info += f"The game's chat room was open at [{chat_room_open_time}].\n"
         
-        # Add conversation topic context if available (soft, non-directive)
         from game_constants import CONVERSATION_TOPIC_FILE
         topic_file = self.game_dir / CONVERSATION_TOPIC_FILE
         if topic_file.exists():
@@ -42,21 +41,7 @@ class LLMPlayer(ABC):
             if topic:
                 system_info += f"\nThe current conversation topic is: {topic}. "
                 system_info += "You don't need to stick to it strictly — people may drift naturally.\n"
-        if attention_to_not_repeat:
-            # Show only AI's own recent messages (not full chat history - that's in the prompt)
-            previous_messages = (self.game_dir / PERSONAL_CHAT_FILE_FORMAT.format(self.name)
-                                 ).read_text().splitlines()
-            if previous_messages:
-                system_info += f"\nFor reference, here are a few of your recent messages:\n"
-                # Show only last 3 messages to keep it minimal
-                for message in previous_messages[-3:]:
-                    matcher = re.match(MESSAGE_PARSING_PATTERN, message)
-                    if not matcher:
-                        continue
-                    message_content = matcher.group(5)  # depends on MESSAGE_PARSING_PATTERN
-                    system_info += f"  • \"{message_content}\"\n"
-                
-                system_info += "\nWhen deciding what to say next, avoid repeating the same wording or reaction.\n"
+        
         if only_special_tokens:
             system_info += f"You can ONLY respond with one of two possible outputs:\n" \
                            f"{self.pass_turn_token} - indicating your character in the game " \
@@ -101,16 +86,33 @@ class LLMPlayer(ABC):
             self.logger.log(SCHEDULING_DECISION_LOG, MODEL_CHOSE_TO_PASS_TURN_LOG)
         return generate
 
+    def get_recent_messages_reminder(self):
+        """Get a reminder of the AI's last 3 messages to avoid repetition."""
+        previous_messages = (self.game_dir / PERSONAL_CHAT_FILE_FORMAT.format(self.name)
+                             ).read_text().splitlines()
+        if not previous_messages:
+            return ""
+        
+        reminder = "\nFor reference, here are your last few messages:\n"
+        for message in previous_messages[-3:]:
+            matcher = re.match(MESSAGE_PARSING_PATTERN, message)
+            if not matcher:
+                continue
+            message_content = matcher.group(5)
+            reminder += f"  • \"{message_content}\"\n"
+        
+        reminder += "\nWhen deciding what to say next, avoid repeating the same wording or reaction.\n"
+        return reminder
+
     def get_vote(self, message_history, candidate_vote_names):
-        task = f"From the following remaining players, which player you want to vote for " \
-               f"to eliminate? Base your answer on the conversation as seen in the message " \
-               f"history, and especially on what you ({self.name}) said. " \
-               f"Reply with only one name from the list, and nothing but that name: "
-        task += ", ".join(candidate_vote_names)
-        prompt = turn_task_into_prompt(task, message_history)
-        system_info = self.get_system_info_message()
-        self.logger.log("prompt for get_vote", prompt)
-        self.logger.log("system_info for get_vote", system_info)
-        vote = self.llm.generate(prompt,False, system_info)
-        self.logger.log("generated vote in get_vote", vote)
+        import random
+        
+        if not candidate_vote_names:
+            self.logger.log("get_vote error", "No candidates to vote for")
+            return None
+        
+        vote = random.choice(candidate_vote_names)
+        self.logger.log("random vote selected", 
+                       f"Voting for: {vote} (randomly chosen from {len(candidate_vote_names)} candidates)")
+        
         return vote
