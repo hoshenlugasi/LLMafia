@@ -353,7 +353,7 @@ LLM_CONFIG_KEYS_OPTIONS = {
     USE_TURN_TOKEN_KEY: USE_TURN_TOKEN_OPTIONS,
     ASYNC_TYPE_KEY: ASYNC_TYPES
 }
-promp
+
 HUGGINGFACE_SCHEDULING_GENERATION_PARAMETERS = {
     MAX_NEW_TOKENS_KEY: 7,  # [[speak]] for example requires 5, <speak> requires 4, and there is also <|end_of_text|>
     REPETITION_PENALTY_KEY: 0.9  # reward tokens it has already seen, like the special tokens
