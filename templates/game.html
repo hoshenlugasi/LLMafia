@@ -755,17 +755,6 @@
                 </div>
                 
                 <div class="survey-question">
-                    <label>How confident are you? (1 = Not confident, 5 = Very confident)</label>
-                    <div class="confidence-options">
-                        <div class="confidence-option" onclick="selectRating('confidence', 1)">1</div>
-                        <div class="confidence-option" onclick="selectRating('confidence', 2)">2</div>
-                        <div class="confidence-option" onclick="selectRating('confidence', 3)">3</div>
-                        <div class="confidence-option" onclick="selectRating('confidence', 4)">4</div>
-                        <div class="confidence-option" onclick="selectRating('confidence', 5)">5</div>
-                    </div>
-                </div>
-                
-                <div class="survey-question">
                     <label>How human-like was the AI's behavior? (1 = Not human-like, 5 = Very human-like)</label>
                     <div class="confidence-options" id="humanLikenessOptions">
                         <div class="confidence-option" onclick="selectRating('human_likeness', 1)">1</div>
@@ -837,9 +826,8 @@
         let previousCanChat = false;
         let previousCanVote = false;
         
-        // Survey ratings - track all 4 rating fields
+        // Survey ratings - track 3 rating fields
         let surveyRatings = {
-            confidence: null,
             human_likeness: null,
             timing: null,
             relevance: null
@@ -1540,11 +1528,7 @@
             const suspicionReason = document.getElementById('suspicionReason').value.trim();
             const notes = document.getElementById('surveyNotes').value.trim();
             
-            // Validation - all 4 rating fields required
-            if (!surveyRatings.confidence) {
-                alert('Please rate your confidence level (1-5)');
-                return;
-            }
+            // Validation - all 3 rating fields required
             if (!surveyRatings.human_likeness) {
                 alert('Please rate how human-like the AI\'s behavior was (1-5)');
                 return;
