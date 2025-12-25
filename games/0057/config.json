@@ -1,0 +1,84 @@
+{
+    "players": [
+        {
+            "name": "Avery",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "gabi",
+            "llm_config": {}
+        },
+        {
+            "name": "Brook",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "uri",
+            "llm_config": {}
+        },
+        {
+            "name": "Ray",
+            "is_ai": true,
+            "is_llm": true,
+            "real_name": "LLM0",
+            "llm_config": {
+                "model_name": "Qwen/Qwen3-Next-80B-A3B-Instruct",
+                "use_together": true,
+                "use_gemini": false,
+                "use_pipeline": false,
+                "pipeline_task": "text-generation",
+                "max_new_tokens": 25,
+                "max_tokens": 25,
+                "num_beams": 1,
+                "repetition_penalty": 1.25,
+                "do_sample": true,
+                "temperature": 1.3,
+                "no_repeat_ngram_size": 8,
+                "num_words_per_second_to_wait": 1,
+                "pass_turn_token": "<wait>",
+                "use_turn_token": "<send>",
+                "async_type": "schedule_then_generate",
+                "persona": "israeli_student"
+            }
+        },
+        {
+            "name": "Remi",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "hoshen",
+            "llm_config": {}
+        },
+        {
+            "name": "Reese",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "nadav",
+            "llm_config": {}
+        },
+        {
+            "name": "Winter",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "arie",
+            "llm_config": {}
+        },
+        {
+            "name": "Dylan",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "sari",
+            "llm_config": {}
+        },
+        {
+            "name": "Logan",
+            "is_ai": false,
+            "is_llm": false,
+            "real_name": "dolev",
+            "llm_config": {}
+        }
+    ],
+    "daytime_minutes": 2.0,
+    "nighttime_minutes": 0,
+    "anonymous_voting": true,
+    "notes": "",
+    "preparation_command": "prepare_config.py -p 8 -l 1 -dt 2 -a -o Qwen4new8",
+    "config_original_path_when_game_created": ".\\configurations\\Qwen4new8.json"
+}
