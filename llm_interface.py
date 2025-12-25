@@ -168,6 +168,14 @@ def main():
                 if voting_wait_start is None:
                     voting_wait_start = time.time()
                     player.logger.log("AGENT_STATUS", "Entering voting wait loop")
+                    
+                    # Cast vote when first entering voting phase
+                    player.logger.log("AGENT_STATUS", "Attempting to cast vote")
+                    try:
+                        get_vote_from_llm(player, message_history)
+                    except Exception as e:
+                        player.logger.log("AGENT_ERROR", f"Failed to cast vote: {str(e)}")
+                        print(colored(f"ERROR casting vote: {str(e)}", "red"))
                 
                 # Check timeout
                 if time.time() - voting_wait_start > VOTING_TIMEOUT:

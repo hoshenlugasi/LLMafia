@@ -187,7 +187,11 @@ If it feels off or you're repeating yourself: simplify, change direction, or sta
 === STYLE & NATURALNESS ===
 - Usually 3–8 words, one main idea.
 - Match capitalization and formality of the room.
-- Minimal punctuation.
+- Match the room's punctuation style:
+  * If others rarely use commas → don't use them at all
+  * If others use them occasionally → use sparingly (max 1 per message)
+  * If others use them frequently → still keep to max 2 per message
+- Keep punctuation minimal overall — chat messages are casual.
 - Vary your responses over time — humans don't react the same way every time.
 - Avoid falling into repeated patterns or catchphrases.
 
@@ -307,10 +311,10 @@ HUGGINGFACE_SCHEDULING_GENERATION_PARAMETERS = {
     REPETITION_PENALTY_KEY: 0.9  # reward tokens it has already seen, like the special tokens
 }
 TOGETHER_SCHEDULING_GENERATION_PARAMETERS = {
-    MAX_TOKENS_KEY: 6,  # [[speak]] for example requires 5, <speak> requires 4
+    MAX_TOKENS_KEY: 3,  # Enough for <send> or <wait> token (3 tokens + safety margin)
 }
 GEMINI_SCHEDULING_GENERATION_PARAMETERS = {
-    MAX_NEW_TOKENS_KEY: 6,  # [[speak]] for example requires 5, <speak> requires 4
+    MAX_NEW_TOKENS_KEY: 3,  # Enough for <send> or <wait> token (3 tokens + safety margin)
 }
 
 # prompts
@@ -373,6 +377,48 @@ def analyze_capitalization_style(message_history):
     else:
         return "mixed"  # Room is mixed
 
+def analyze_comma_usage(message_history):
+    """Analyze how many commas other players are using."""
+    import re
+    if not message_history:
+        return "minimal"
+    
+    # Look at last 7-10 messages from OTHER players (not Game Manager)
+    from game_constants import MESSAGE_PARSING_PATTERN, GAME_MANAGER_NAME
+    recent_messages = message_history[-10:] if len(message_history) >= 10 else message_history
+    
+    total_messages = 0
+    total_commas = 0
+    
+    for msg in recent_messages:
+        matcher = re.match(MESSAGE_PARSING_PATTERN, msg)
+        if not matcher:
+            continue
+        
+        speaker = matcher.group(4)
+        content = matcher.group(5).strip()
+        
+        # Skip Game Manager messages
+        if speaker == GAME_MANAGER_NAME or not content:
+            continue
+        
+        total_messages += 1
+        total_commas += content.count(',')
+    
+    if total_messages == 0:
+        return "minimal"
+    
+    # Calculate average commas per message
+    avg_commas = total_commas / total_messages
+    
+    # Determine comma usage style
+    if avg_commas < 0.3:  # Less than 0.3 commas per message
+        return "minimal"  # Room uses very few commas
+    elif avg_commas < 0.8:  # 0.3-0.8 commas per message
+        return "occasional"  # Room uses some commas
+    else:
+        return "frequent"  # Room uses commas often
+
 def make_more_human_like(message, message_history=None):
     import random
     
@@ -383,24 +429,50 @@ def make_more_human_like(message, message_history=None):
     # Clean special characters
     message = strip_special_chars(message)
     
+    # Analyze room's comma usage and adapt accordingly
+    comma_style = "minimal"
+    if message_history:
+        comma_style = analyze_comma_usage(message_history)
+    
+    # Handle commas based on room style
+    if comma_style == "minimal":
+        # Room uses very few commas - remove all commas
+        message = message.replace(',', '')
+    elif comma_style == "occasional":
+        # Room uses some commas - limit to max 1 comma
+        comma_count = message.count(',')
+        if comma_count > 1:
+            # Keep only the first comma, remove the rest
+            parts = message.split(',', 1)
+            if len(parts) == 2:
+                message = parts[0] + ',' + parts[1].replace(',', '')
+    # If comma_style == "frequent", keep commas as they are (but limit to 2 max)
+    else:
+        comma_count = message.count(',')
+        if comma_count > 2:
+            # Keep only first 2 commas
+            parts = message.split(',', 2)
+            if len(parts) == 3:
+                message = parts[0] + ',' + parts[1] + ',' + parts[2].replace(',', '')
+    
     # Analyze room's capitalization style if history provided
     cap_style = "mixed"
     if message_history:
         cap_style = analyze_capitalization_style(message_history)
     
-    # Match the room's style
+    # Match the room's capitalization style
     if cap_style == "lowercase":
         # Room is casual - go lowercase most of the time
         if random.random() < 0.85:  # 85% lowercase when room is casual
-            return message.lower()
+            message = message.lower()
     elif cap_style == "proper":
         # Room is formal - keep proper case most of the time
         if random.random() < 0.85:  # 85% keep proper case when room is formal
-            return message  # Keep original casing
+            pass  # Keep original casing
     else:  # mixed
         # Room is mixed - be flexible based on message length
         if len(message.split()) <= 6:
             if random.random() < 0.6:  # 60% lowercase for short messages
-                return message.lower()
+                message = message.lower()
     
-    return message  # Keep original casing as fallback
+    return message

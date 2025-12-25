@@ -50,7 +50,7 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
                 prompt = self.create_generation_prompt(message_history)
                 self.logger.log("prompt in generate_message", prompt)
                 message = self.llm.generate(
-                    prompt, False, self.get_system_info_message())
+                    prompt, False, self.get_system_info_message(attention_to_not_repeat=True))
                 # Silent backstop: trim if too long (10 words max)
                 message = self.trim_message_if_too_long(message, max_words=10)
                 # Pass message_history for smart capitalization matching
@@ -168,13 +168,12 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
                f"for now and see what messages others will send? " \
                f"Remember to choose to send a message only if your contribution to the " \
                f"discussion in the current time will be meaningful enough. " \
-        
-        if asked_question:
-            task += f"Note: Someone may be asking something. Consider responding if it feels natural. "
-        elif mentioned:
+
+        if mentioned:
             task += f"Note: Your name was mentioned recently. Consider responding if it feels natural. "
         else:
-            # Only add frequency guidance when NOT directly engaged
+            if asked_question:
+                task += f"Note: Someone may be asking something. Consider responding if it feels natural. "
             task += f"{self.talkative_scheduling_prompt_modifier(message_history).strip()} "
         
         task += f"Reply only with `{self.use_turn_token}` if you want to send a message now, " \
@@ -192,7 +191,5 @@ class ScheduleThenGeneratePlayer(LLMPlayer):
                f"It is very important that you don't repeat yourself! " \
                f"Match your style of message to the other player's message style, " \
                f"with more emphasis on more recent messages.\n"
-        
-        task += self.get_recent_messages_reminder()
         
         return turn_task_into_prompt(task, message_history)

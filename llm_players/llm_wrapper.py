@@ -107,8 +107,16 @@ class LLMWrapper:
 
         self.generation_parameters = {key: value for key, value in llm_config.items()
                                       if key in generation_params}
-        self.scheduling_generation_parameters = {key: value for key, value in llm_config.items()
-                                      if key in scheduling_generation_params}
+        
+        # For scheduling, use hardcoded defaults - don't let config override
+        # This ensures scheduling always uses minimal tokens (just for <send>/<wait>)
+        if self.use_gemini:
+            self.scheduling_generation_parameters = GEMINI_SCHEDULING_GENERATION_PARAMETERS.copy()
+        elif self.use_together:
+            self.scheduling_generation_parameters = TOGETHER_SCHEDULING_GENERATION_PARAMETERS.copy()
+        else:
+            self.scheduling_generation_parameters = HUGGINGFACE_SCHEDULING_GENERATION_PARAMETERS.copy()
+
         if (NUM_BEAMS_KEY in self.generation_parameters
             and self.generation_parameters[NUM_BEAMS_KEY] < 2):
             del self.generation_parameters[NUM_BEAMS_KEY]

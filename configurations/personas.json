@@ -14,7 +14,7 @@
       "quick_reactions": ["yeah", "nice", "fair", "haha", "true", "right"],
       "when_asked_location": ["israel", "tel aviv", "from here"],
       "when_asked_age": ["23", "early 20s"],
-      "when_asked_occupation": ["cs", "studying comp sci", "at uni"]
+      "when_asked_occupation": ["cs", "studying cs", "at uni"]
     }
   },
   

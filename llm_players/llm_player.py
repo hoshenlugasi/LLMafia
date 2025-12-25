@@ -28,7 +28,7 @@ class LLMPlayer(ABC):
         self.system_prompt = build_system_prompt(self.persona_id)
         self.llm = LLMWrapper(self.logger, **llm_config)
 
-    def get_system_info_message(self, only_special_tokens=False):
+    def get_system_info_message(self, attention_to_not_repeat=False, only_special_tokens=False):
         system_info = f"Your name is {self.name}. {self.system_prompt}\n"
         chat_room_open_time = (self.game_dir / GAME_START_TIME_FILE).read_text().strip()
         if chat_room_open_time:
@@ -41,6 +41,20 @@ class LLMPlayer(ABC):
             if topic:
                 system_info += f"\nThe current conversation topic is: {topic}. "
                 system_info += "You don't need to stick to it strictly — people may drift naturally.\n"
+        
+        if attention_to_not_repeat:
+            previous_messages = (self.game_dir / PERSONAL_CHAT_FILE_FORMAT.format(self.name)
+                                 ).read_text().splitlines()
+            if previous_messages:
+                system_info += f"\nFor reference, here are a few of your recent messages:\n"
+                for message in previous_messages[-3:]:
+                    matcher = re.match(MESSAGE_PARSING_PATTERN, message)
+                    if not matcher:
+                        continue
+                    message_content = matcher.group(5)
+                    system_info += f"  • \"{message_content}\"\n"
+                
+                system_info += "\nWhen deciding what to say next, avoid repeating the same wording or reaction.\n"
         
         if only_special_tokens:
             system_info += f"You can ONLY respond with one of two possible outputs:\n" \
@@ -85,24 +99,6 @@ class LLMPlayer(ABC):
         else:
             self.logger.log(SCHEDULING_DECISION_LOG, MODEL_CHOSE_TO_PASS_TURN_LOG)
         return generate
-
-    def get_recent_messages_reminder(self):
-        """Get a reminder of the AI's last 3 messages to avoid repetition."""
-        previous_messages = (self.game_dir / PERSONAL_CHAT_FILE_FORMAT.format(self.name)
-                             ).read_text().splitlines()
-        if not previous_messages:
-            return ""
-        
-        reminder = "\nFor reference, here are your last few messages:\n"
-        for message in previous_messages[-3:]:
-            matcher = re.match(MESSAGE_PARSING_PATTERN, message)
-            if not matcher:
-                continue
-            message_content = matcher.group(5)
-            reminder += f"  • \"{message_content}\"\n"
-        
-        reminder += "\nWhen deciding what to say next, avoid repeating the same wording or reaction.\n"
-        return reminder
 
     def get_vote(self, message_history, candidate_vote_names):
         import random

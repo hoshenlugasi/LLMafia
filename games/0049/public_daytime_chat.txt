@@ -14,7 +14,9 @@
 [09:16:42] Cameron: your*
 [09:16:58] Reese: tyler?
 [09:17:02] Tyler: sleep deprivation, cs deadlines
-[09:17:10] Tyler: cs deadlines, sleep’s a luxury right now
+[09:17:10] Tyler: cs deadlines, sleep’s a luxury right
+
+
 [09:18:23] Remi: Hi again
 [09:18:29] Tyler: hey remi, same here—still half-asleep
 [09:19:04] Remi: ok
@@ -26,6 +28,8 @@
 [09:20:38] Skylar: so strange
 [09:20:46] Elliot: Agree
 [09:20:58] Elliot: Where are you from
+
+
 [09:21:40] Remi: Hi there
 [09:21:47] Tyler: hey remi, still half-dead from coding
 [09:21:47] Remi: I am from italy
