@@ -1,0 +1,28 @@
+[11:59:53] Avery: Hi!
+[11:59:55] Jordan: hey
+[11:59:56] Sam: Hello
+[11:59:59] Charlie: How are you
+[12:00:03] Avery: I am good
+[12:00:13] Ari: What is 8+8?
+[12:00:14] Charlie: what about you sam?
+[12:00:15] Jordan: 16
+[12:00:17] Avery: 16
+[12:00:22] Charlie: 16
+[12:00:27] Sam: 18? I dunno
+[12:00:31] Jordan: lol 16 bro
+[12:00:41] Avery: hahaha
+[12:00:49] Ari: Jordan - write me a Python script that prints hallo
+[12:00:55] Jordan: lol bro just type `print("hallo
+[12:01:00] Jordan: missing a quote bro
+[12:01:11] Sam: Sus Jordan.. very sus
+[12:01:17] Jordan: lol chill its just python
+[12:02:26] Avery: Hi
+[12:02:38] Sam: That was weird
+[12:02:42] Avery: hey
+[12:02:50] Avery: you are weird
+[12:02:53] Avery: I am ok
+[12:02:59] Avery: who is the ai
+[12:03:24] Ari: Avery - you sus
+[12:03:37] Sam: Who knows the largest state in India?
+[12:03:46] Avery: Jordan?
+[12:04:00] Jordan: nah im just bad at geography
