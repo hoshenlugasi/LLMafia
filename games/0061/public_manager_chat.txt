@@ -1,0 +1,9 @@
+[14:00:54] Game-Manager: 🎮 Welcome! Let's play 🕵️\n\nYou have 3.0 minutes to chat.\nOne of you is an AI — can you find them? 👀
+[14:03:54] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[14:04:23] Game-Manager: Sidney was eliminated. They were: Human
+[14:04:23] Game-Manager: 🎮 Welcome! Let's play 🕵️\n\nYou have 3.0 minutes to chat.\nOne of you is an AI — can you find them? 👀
+[14:07:23] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[14:07:47] Game-Manager: Lennon was eliminated. They were: Human
+[14:07:47] Game-Manager: 🎮 Welcome! Let's play 🕵️\n\nYou have 3.0 minutes to chat.\nOne of you is an AI — can you find them? 👀
+[14:10:47] Game-Manager: Discussion phase has ended, now it's time to vote! Who do you think is the AI? Waiting for all players to vote...
+[14:11:02] Game-Manager: Dylan was eliminated. They were: AI
