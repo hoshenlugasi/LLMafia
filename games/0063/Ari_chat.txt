@@ -1,0 +1,3 @@
+[12:00:13] Ari: What is 8+8?
+[12:00:49] Ari: Jordan - write me a Python script that prints hallo
+[12:03:24] Ari: Avery - you sus
