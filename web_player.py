@@ -591,7 +591,6 @@ def survey_submit():
     Writes to survey file in Niv's exact format matching game_constants.py:
     TIME - <timestamp>
     Was the LLM identified - <not used, always 0>
-    LLM_CONFIDENCE - <1-5>
     similarity to human behavior - <1-5>
     timing of messaging - <1-5>
     relevance of messages - <1-5>
@@ -604,7 +603,6 @@ def survey_submit():
     """
     data = request.json or {}
     session_id = data.get("session_id")
-    confidence = data.get("confidence")
     human_likeness = data.get("human_likeness")
     timing = data.get("timing")
     relevance = data.get("relevance")
@@ -622,12 +620,11 @@ def survey_submit():
     
     # Validate all rating fields (1-5)
     try:
-        confidence = int(confidence)
         human_likeness = int(human_likeness)
         timing = int(timing)
         relevance = int(relevance)
         
-        for val, name in [(confidence, "confidence"), (human_likeness, "human_likeness"), 
+        for val, name in [(human_likeness, "human_likeness"), 
                           (timing, "timing"), (relevance, "relevance")]:
             if not (1 <= val <= 5):
                 return jsonify({"error": f"{name} must be between 1 and 5"}), 400
@@ -642,7 +639,6 @@ def survey_submit():
     # Note: "Was the LLM identified" is set to 0 (not applicable) since we no longer ask this
     survey_content = f"TIME{METRIC_NAME_AND_SCORE_DELIMITER}{timestamp}\n"
     survey_content += f"Was the LLM identified{METRIC_NAME_AND_SCORE_DELIMITER}0\n"
-    survey_content += f"LLM_CONFIDENCE{METRIC_NAME_AND_SCORE_DELIMITER}{confidence}\n"
     survey_content += f"similarity to human behavior{METRIC_NAME_AND_SCORE_DELIMITER}{human_likeness}\n"
     survey_content += f"timing of messaging{METRIC_NAME_AND_SCORE_DELIMITER}{timing}\n"
     survey_content += f"relevance of messages{METRIC_NAME_AND_SCORE_DELIMITER}{relevance}\n"
